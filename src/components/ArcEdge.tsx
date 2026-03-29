@@ -1,6 +1,13 @@
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, useInternalNode } from '@xyflow/react';
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  useEdges,
+  useInternalNode
+} from '@xyflow/react';
 
 export default function ArcEdge({
+  id,
   source,
   target,
   style = {},
@@ -9,94 +16,175 @@ export default function ArcEdge({
 }: EdgeProps) {
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
+  const edges = useEdges();
 
   if (!sourceNode || !targetNode) return null;
 
-  // Center coordinate logic
-  const sourceCenterX = (sourceNode.internals.positionAbsolute?.x ?? 0) + (sourceNode.measured.width ?? 0) / 2;
-  const sourceCenterY = (sourceNode.internals.positionAbsolute?.y ?? 0) + (sourceNode.measured.height ?? 0) / 2;
-  const targetCenterX = (targetNode.internals.positionAbsolute?.x ?? 0) + (targetNode.measured.width ?? 0) / 2;
-  const targetCenterY = (targetNode.internals.positionAbsolute?.y ?? 0) + (targetNode.measured.height ?? 0) / 2;
+  const getCenter = (node: any) => ({
+    x:
+      (node.internals.positionAbsolute?.x ?? 0) +
+      (node.measured.width ?? 0) / 2,
+    y:
+      (node.internals.positionAbsolute?.y ?? 0) +
+      (node.measured.height ?? 0) / 2
+  });
+
+  const sourceCenter = getCenter(sourceNode);
+  const targetCenter = getCenter(targetNode);
 
   let path = '';
   let labelX = 0;
   let labelY = 0;
 
   if (source === target) {
-    // Dynamic self-loop logic (always on top of the node)
-    const r = 30;
-    const radius = 50;
-    const startX = sourceCenterX;
-    const startY = sourceCenterY - radius;
-    path = `M ${startX} ${startY} C ${startX - r * 2.5} ${startY - r * 4}, ${startX + r * 2.5} ${startY - r * 4}, ${startX} ${startY}`;
-    labelX = startX;
-    labelY = startY - r * 3 + 10;
-  } else {
-    // Direction vector
-    const dx = targetCenterX - sourceCenterX;
-    const dy = targetCenterY - sourceCenterY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const nx = dx / (dist || 1);
-    const ny = dy / (dist || 1);
+    const nodeRadius = (sourceNode.measured.width ?? 100) / 2;
 
-    // Perpendicular vector for label positioning
+    const selfLoops = edges
+      .filter((e) => e.source === source && e.target === source)
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+
+    const myIndex = Math.max(
+      0,
+      selfLoops.findIndex((e) => e.id === id)
+    );
+
+    // always top, spread slightly left/right if multiple
+    const baseAngle = -Math.PI / 2;
+    const spreadStep = Math.PI / 10;
+    const spreadOffset =
+      (myIndex - (selfLoops.length - 1) / 2) * spreadStep;
+
+    const finalAngle = baseAngle + spreadOffset;
+
+    const loopRadius = nodeRadius * 0.6;
+    const offset = Math.PI / 6;
+
+    const startAngle = finalAngle - offset;
+    const endAngle = finalAngle + offset;
+
+    const sx = sourceCenter.x + nodeRadius * Math.cos(startAngle);
+    const sy = sourceCenter.y + nodeRadius * Math.sin(startAngle);
+
+    const tx = sourceCenter.x + nodeRadius * Math.cos(endAngle);
+    const ty = sourceCenter.y + nodeRadius * Math.sin(endAngle);
+
+    path = `M ${sx} ${sy} A ${loopRadius} ${loopRadius} 0 1 1 ${tx} ${ty}`;
+
+
+const distance = nodeRadius + loopRadius * 1.45;
+
+labelX =
+  sourceCenter.x + distance * Math.cos(finalAngle);
+
+labelY =
+  sourceCenter.y + distance * Math.sin(finalAngle);
+
+
+
+  } else {
+    const dx = targetCenter.x - sourceCenter.x;
+    const dy = targetCenter.y - sourceCenter.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+
     const px = -ny;
     const py = nx;
 
-    // Radius of circular nodes
-    const radius = 50;
+    const sourceRadius = (sourceNode.measured.width ?? 100) / 2;
+    const targetRadius = (targetNode.measured.width ?? 100) / 2;
 
-    // To prevent A->B and B->A from crossing or overlapping at the start/end points, 
-    // we DRAW them from the pure intersection of the center-line, but then we 
-    // force a SWEEP bulge. A->B bulge right, B->A bulge right (which is left from A's perspective).
-    const sx = sourceCenterX + nx * radius;
-    const sy = sourceCenterY + ny * radius;
-    const tx = targetCenterX - nx * radius;
-    const ty = targetCenterY - ny * radius;
+    const sx = sourceCenter.x + nx * sourceRadius;
+    const sy = sourceCenter.y + ny * sourceRadius;
 
-    const arcLen = Math.sqrt((tx - sx) ** 2 + (ty - sy) ** 2);
-    // Control curviness: Larger multiplier = flatter line. 
-    // 1.2 provides a nice, clean arc that isn't too extreme.
-    const curviness = arcLen * 1.5;
+    const tx = targetCenter.x - nx * targetRadius;
+    const ty = targetCenter.y - ny * targetRadius;
 
-    // Fixed sweep 1 for both. Since the line direction is flipped (Source/Target), 
-    // they will bulge in opposite ways relative to the chord.
-    const sweep = 1;
-    path = `M ${sx} ${sy} A ${curviness} ${curviness} 0 0 ${sweep} ${tx} ${ty}`;
+    // all non-self edges between the same unordered pair of nodes
+    const pairEdges = edges
+      .filter(
+        (e) =>
+          e.source !== e.target &&
+          ((e.source === source && e.target === target) ||
+            (e.source === target && e.target === source))
+      )
+      .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
-    // Position label directly on the mid-arc peak
-    // Calculate the height of the circular segment peak for given radius and chord.
-    const halfChord = (arcLen / 2);
-    // Triangle: curviness^2 = halfChord^2 + (curviness - h)^2
-    // h = curviness - sqrt(curviness^2 - halfChord^2)
-    const h = curviness - Math.sqrt(Math.max(0, curviness * curviness - halfChord * halfChord));
+    const pairCount = pairEdges.length;
+    const myIndex = Math.max(
+      0,
+      pairEdges.findIndex((e) => e.id === id)
+    );
 
-    const midX = (sx + tx) / 2;
-    const midY = (sy + ty) / 2;
-    // For sweep 1, bulge is in direction (px, py)
-    labelX = midX + px * h;
-    labelY = midY + py * h;
+    // distribute edges around centerline:
+    // 1 edge  -> [0]
+    // 2 edges -> [-0.5, +0.5]
+    // 3 edges -> [-1, 0, +1]
+    const lane = myIndex - (pairCount - 1) / 2;
+
+    // stable sign so A->B and B->A bend opposite ways
+    const canonicalForward = source < target;
+    const baseSign = canonicalForward ? 1 : -1;
+
+    // for exactly 2 opposite edges this gives one up, one down
+    // for more edges it fans out cleanly
+    const curveStrength = Math.min(60, Math.max(28, dist * 0.22));
+    const offsetAmount =
+      pairCount === 1 ? curveStrength * 0.55 : lane * curveStrength * baseSign;
+
+    const mx = (sx + tx) / 2;
+    const my = (sy + ty) / 2;
+
+    const cx = mx + px * offsetAmount;
+    const cy = my + py * offsetAmount;
+
+    // quadratic bezier:
+    // simpler to control, labels are easy to place,
+    // markerEnd stays tangent to the path
+    path = `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`;
+
+    // label at t=0.5 on quadratic bezier
+    const t = 0.5;
+    labelX =
+      (1 - t) * (1 - t) * sx +
+      2 * (1 - t) * t * cx +
+      t * t * tx;
+
+    labelY =
+      (1 - t) * (1 - t) * sy +
+      2 * (1 - t) * t * cy +
+      t * t * ty;
+
+    // nudge labels further away if there are parallel/opposite edges
+    if (pairCount > 1) {
+      const extra = 10 * Math.sign(offsetAmount || baseSign);
+      labelX += px * extra;
+      labelY += py * extra;
+    }
   }
 
   return (
     <>
       <BaseEdge path={path} markerEnd={markerEnd} style={style} />
+
       {label && (
         <EdgeLabelRenderer>
           <div
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: 'var(--bg-secondary, #1e293b)',
+              background: '#1e293b',
               padding: '1px 5px',
               borderRadius: '4px',
               fontSize: 10,
               fontWeight: 700,
-              color: 'var(--text-primary, #f8fafc)',
+              color: '#f8fafc',
               border: '1px solid var(--accent)',
               pointerEvents: 'all',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.5)',
-              zIndex: 1000
+              zIndex: 1000,
+              whiteSpace: 'nowrap'
             }}
             className="nodrag nopan"
           >
