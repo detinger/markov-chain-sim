@@ -155,7 +155,7 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
       fitView
       fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
       minZoom={0.2}
-      proOptions={{ hideAttribution: false }}
+      proOptions={{ hideAttribution: true }}
       aria-label="Chain graph. Use the inspector to add transitions by keyboard."
     >
       <Controls showInteractive={false} />
