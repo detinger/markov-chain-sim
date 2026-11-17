@@ -1,4 +1,4 @@
-# 🔮 Markov Chain Simulator
+# Markov Chain Simulator
 
 An interactive web app for learning and exploring discrete-time Markov chains. You can:
 
