@@ -486,3 +486,6 @@ body.resizing-rows .react-flow { pointer-events: none; }
   .home-hero h1 { font-size: 24px; }
   .home-data { flex-direction: column; }
 }
+.theory-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 13px; }
+.theory-more { text-align: left; justify-content: flex-start; align-self: flex-start; }
+.example-card .btn { white-space: normal; height: auto; min-height: 28px; text-align: left; padding-top: 4px; padding-bottom: 4px; }

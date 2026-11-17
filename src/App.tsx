@@ -9,8 +9,8 @@ import DistributionView from './components/SimulationChart';
 import SimulationPanel from './features/simulation/SimulationPanel';
 import { usePrefersReducedMotion, useSimulation } from './features/simulation/useSimulation';
 import SequenceCalculator from './components/SequenceCalculator';
-import TheoryModal from './components/TheoryModal';
-import ExamplesDialog from './components/ExamplesDialog';
+import TheoryPage from './features/theory/TheoryPage';
+import ExamplesPage from './features/examples/ExamplesPage';
 import ValidationPanel from './components/ValidationPanel';
 import StateInspector from './components/StateInspector';
 import ExplainPanel from './components/ExplainPanel';
@@ -72,12 +72,11 @@ export default function App() {
   const toggleInspector = (open: boolean) => { focusToggle.current = true; setInspectorOpen(open); };
   const [tab, setTab] = useState<InspectorTab>('matrix');
   const [selection, setSelection] = useState<Selection>(null);
-  const [dialog, setDialog] = useState<'theory' | 'examples' | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const sim = useSimulation(doc, chain);
   const experiment = useExperiment();
-  const [page, setPage] = useState<'home' | 'modeler' | 'analysis' | 'experiments' | 'compare' | 'learn' | 'challenges'>('home');
+  const [page, setPage] = useState<'home' | 'theory' | 'examples' | 'modeler' | 'analysis' | 'experiments' | 'compare' | 'learn' | 'challenges'>('home');
   const [clearOpen, setClearOpen] = useState(false);
   const baseline = useBaseline();
   const progress = useProgress();
@@ -272,9 +271,9 @@ export default function App() {
           </div>
           <button className="nav-link" aria-current={page === 'home' ? 'page' : undefined} onClick={() => setPage('home')} title="Home"><Home /><span className="nav-text">Home</span></button>
           <div className="nav-group">Learn</div>
-          <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span></button>
+          <button className="nav-link" aria-current={page === 'theory' ? 'page' : undefined} onClick={() => setPage('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span></button>
           <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span></button>
-          <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span></button>
+          <button className="nav-link" aria-current={page === 'examples' ? 'page' : undefined} onClick={() => setPage('examples')} title="Examples"><Library /><span className="nav-text">Examples</span></button>
           <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span></button>
           <div className="nav-group">Workspace</div>
           {([
@@ -309,11 +308,14 @@ export default function App() {
         <div className="main">
           {page === 'home' && <main id="main" className="page-scroll" tabIndex={-1}><HomePage doc={doc} valid={!!chain} progress={progress} hasBaseline={!!baseline.baseline}
             onGo={(t: HomeTarget, lesson?: string) => {
-              if (t === 'theory' || t === 'examples') setDialog(t);
-              else { if (t === 'learn' && lesson) setLessonId(lesson); setPage(t); }
+              if (t === 'learn' && lesson) setLessonId(lesson);
+              setPage(t);
             }}
             onDownloadModel={() => { download(fileName(doc), exportDocument(doc)); toast('success', 'Project file downloaded.'); }}
             onClearAll={() => setClearOpen(true)} /></main>}
+          {page === 'theory' && <main id="main" className="page-scroll" tabIndex={-1}><TheoryPage onOpenLesson={openLesson} /></main>}
+          {page === 'examples' && <main id="main" className="page-scroll" tabIndex={-1}><ExamplesPage onOpenLesson={openLesson}
+            onOpen={(key) => { setPage('modeler'); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} /></main>}
           {page === 'analysis' && <main id="main" className="page-scroll" tabIndex={-1}><AnalysisPage doc={doc} chain={analysisChain} stale={stale} theme={resolved} /></main>}
           {page === 'learn' && <main id="main" className="page-scroll" tabIndex={-1}><LearnPage lessonId={lessonId} onSelectLesson={(id) => { setLessonId(id); document.getElementById('main')?.scrollTo(0, 0); }} progress={progress}
             onOpenChallenge={(id) => { setChallengeId(id); setPage('challenges'); }}
@@ -383,7 +385,7 @@ export default function App() {
                         <button className="btn" onClick={addState}><Plus size={16} /> Add State</button>
               <button className="btn btn-primary" disabled={!chain} title={chain ? 'Animate one random path' : 'Fix validation issues first'}
                 onClick={() => { setLowerMode('sample'); setLowerOpen(true); sim.play(); }}><Play size={16} /> Run simulation</button>
-                        <button className="btn" onClick={() => setDialog('examples')}><Library size={16} /> Open an example</button>
+                        <button className="btn" onClick={() => setPage('examples')}><Library size={16} /> Open an example</button>
                       </div>
                     </div>
                   </div>
@@ -500,10 +502,6 @@ export default function App() {
         </div>
       </div>
 
-      {dialog === 'theory' && <TheoryModal onClose={() => setDialog(null)} />}
-      {dialog === 'examples' && (
-        <ExamplesDialog onClose={() => setDialog(null)} onOpenLesson={(id) => { setDialog(null); openLesson(id); }} onOpen={(key) => { setDialog(null); setPage('modeler'); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} />
-      )}
 
       {pending?.kind === 'replace' && (
         <Dialog size="sm" title={`${pending.title}?`} onClose={() => setPending(null)} footer={

@@ -1,6 +1,5 @@
-import { ALL_EXAMPLES as EXAMPLES, EXAMPLE_META } from '../lib/examples';
-import { Dialog } from './ui';
-import { LESSON_BY_ID } from '../data/lessons';
+import { ALL_EXAMPLES as EXAMPLES, EXAMPLE_META } from '../../lib/examples';
+import { LESSON_BY_ID } from '../../data/lessons';
 
 function Preview({ k }: { k: string }) {
   const ex = EXAMPLES[k];
@@ -30,13 +29,19 @@ function Preview({ k }: { k: string }) {
   );
 }
 
-export default function ExamplesDialog({ onOpen, onClose, onOpenLesson }: { onOpen: (key: string) => void; onClose: () => void; onOpenLesson?: (id: string) => void }) {
+export default function ExamplesPage({ onOpen, onOpenLesson }: { onOpen: (key: string) => void; onOpenLesson?: (id: string) => void }) {
   return (
-    <Dialog title="Examples" onClose={onClose}>
-      <p className="muted">Opening an example replaces the current model. You can undo to get it back, or download it first.</p>
+    <div className="page page-wide">
+      <header className="page-header">
+        <div>
+          <div className="eyebrow">Examples</div>
+          <h1>Example models</h1>
+          <p className="muted" style={{ maxWidth: '72ch' }}>Open a ready-made model in the modeler. Opening an example replaces the current model — you can undo to get it back, or download it first. Each example states its assumptions and limits.</p>
+        </div>
+      </header>
       {(['original', 'teaching'] as const).map((group) => (
         <section key={group} aria-labelledby={`ex-${group}`} style={{ marginTop: 12 }}>
-          <h3 id={`ex-${group}`} style={{ marginBottom: 8 }}>{group === 'original' ? 'Story examples' : 'Small teaching examples'}</h3>
+          <h2 id={`ex-${group}`} className="home-group">{group === 'original' ? 'Story examples' : 'Small teaching examples'}</h2>
           <div className="card-grid">
             {Object.entries(EXAMPLES).filter(([key]) => (EXAMPLE_META[key]?.group ?? 'original') === group).map(([key, ex]) => {
               const meta = EXAMPLE_META[key];
@@ -45,7 +50,7 @@ export default function ExamplesDialog({ onOpen, onClose, onOpenLesson }: { onOp
                   <Preview k={key} />
                   <div className="example-body">
                     <div className="row" style={{ justifyContent: 'space-between' }}>
-                      <h4 style={{ margin: 0 }}>{ex.name}</h4>
+                      <h3 style={{ margin: 0, fontSize: 16 }}>{ex.name}</h3>
                       <span className="badge">{meta?.difficulty}</span>
                     </div>
                     {meta?.subtitle && <span className="hint">{meta.subtitle}</span>}
@@ -68,6 +73,6 @@ export default function ExamplesDialog({ onOpen, onClose, onOpenLesson }: { onOp
           </div>
         </section>
       ))}
-    </Dialog>
+    </div>
   );
 }
