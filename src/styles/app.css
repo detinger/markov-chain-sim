@@ -473,7 +473,8 @@ body.resizing-rows .react-flow { pointer-events: none; }
 .home-hero .brand-mark svg { width: 30px; height: 30px; }
 .home-hero h1 { font-size: 30px; margin: 2px 0 6px; letter-spacing: -0.02em; }
 .home-group { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); font-weight: 600; margin: 8px 0 10px; }
-.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 26px; }
+@media (max-width: 640px) { .home-grid { grid-template-columns: minmax(0, 1fr); } }
 .home-card { display: flex; flex-direction: column; gap: 6px; }
 .home-card h3 { margin: 4px 0 0; font-size: 16px; }
 .home-card p { margin: 0; font-size: 13px; }
