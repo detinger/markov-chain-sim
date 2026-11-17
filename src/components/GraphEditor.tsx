@@ -21,12 +21,15 @@ import type { Selection } from '../app/selection';
 
 const nodeTypes = { circle: CircleNode };
 
-/** Re-fit the viewport whenever a different project is opened (example, import, new model). */
+/** Re-fit the viewport when a different project is opened or the canvas is resized by a panel toggle. */
 function FitOnProjectChange({ projectId }: { projectId: string }) {
   const { fitView } = useReactFlow();
   const ready = useNodesInitialized();
   useEffect(() => {
-    if (ready) requestAnimationFrame(() => fitView({ padding: 0.25, maxZoom: 1 }));
+    if (!ready) return;
+    // Wait for React Flow to measure the new canvas size before fitting.
+    const t = setTimeout(() => fitView({ padding: 0.25, maxZoom: 1 }), 60);
+    return () => clearTimeout(t);
   }, [projectId, ready, fitView]);
   return null;
 }
@@ -43,9 +46,11 @@ interface GraphEditorProps {
   onConnectPair: (from: StateId, to: StateId) => void;
   /** Sample-trajectory overlay; travelMs = 0 means highlight only (reduced motion). */
   sim?: { stateId: StateId; edge: { from: StateId; to: StateId } | null; key: string; travelMs: number } | null;
+  /** Changes when the canvas is resized by a layout toggle (e.g. hiding the inspector), to re-fit the view. */
+  layoutKey?: string;
 }
 
-export default function GraphEditor({ doc, colorMode, selection, draft, flags, onSelect, dispatch, onConnectPair, sim }: GraphEditorProps) {
+export default function GraphEditor({ doc, colorMode, selection, draft, flags, onSelect, dispatch, onConnectPair, sim, layoutKey }: GraphEditorProps) {
   const initialByState = useMemo(() => new Map(doc.initial.map((e) => [e.stateId, e.probability])), [doc.initial]);
   const colorIndex = useMemo(() => new Map(doc.states.map((s, i) => [s.id, i])), [doc.states]);
 
@@ -154,7 +159,7 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
       aria-label="Chain graph. Use the inspector to add transitions by keyboard."
     >
       <Controls showInteractive={false} />
-      <FitOnProjectChange projectId={doc.id} />
+      <FitOnProjectChange projectId={`${doc.id}|${layoutKey ?? ''}`} />
     </ReactFlow>
   );
 }

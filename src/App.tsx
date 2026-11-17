@@ -35,6 +35,7 @@ import { ISSUE_LESSONS, LESSONS, LESSON_BY_ID } from './data/lessons';
 import { snapshotToDocument } from './domain/assessment';
 
 type InspectorTab = 'matrix' | 'state' | 'validate' | 'sequence' | 'explain';
+const INSPECTOR_KEY = 'markov-simulator:inspector';
 type Pending = { kind: 'replace'; title: string; next: () => ChainDocumentV1 } | { kind: 'delete'; id: StateId } | null;
 
 function download(name: string, text: string) {
@@ -50,6 +51,19 @@ export default function App() {
   const { doc, chain, lastValidChain, dispatch, load, undo, redo } = project;
   const { preference, resolved, setPreference } = useTheme();
   const [navCollapsed, setNavCollapsed] = useState(false);
+  // The right-hand inspector can be hidden like the navigation; the choice is remembered on this device.
+  const [inspectorOpen, setInspectorOpen] = useState(() => {
+    try { return localStorage.getItem(INSPECTOR_KEY) !== 'hidden'; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(INSPECTOR_KEY, inspectorOpen ? 'shown' : 'hidden'); } catch { /* storage unavailable */ }
+  }, [inspectorOpen]);
+  const inspectorToggleRef = useRef<HTMLButtonElement>(null);
+  const focusToggle = useRef(false);
+  useEffect(() => {
+    if (focusToggle.current) { focusToggle.current = false; inspectorToggleRef.current?.focus(); }
+  }, [inspectorOpen]);
+  const toggleInspector = (open: boolean) => { focusToggle.current = true; setInspectorOpen(open); };
   const [tab, setTab] = useState<InspectorTab>('matrix');
   const [selection, setSelection] = useState<Selection>(null);
   const [dialog, setDialog] = useState<'theory' | 'examples' | null>(null);
@@ -117,10 +131,13 @@ export default function App() {
     return p === 0 ? { from: selection.from, to: selection.to } : null;
   }, [selection, doc]);
 
+  /** Show a tab, re-opening the inspector if it was hidden (for actions that need it). */
+  const openTab = useCallback((t: InspectorTab) => { setTab(t); setInspectorOpen(true); }, []);
+
   const select = useCallback((s: Selection, focusTab?: InspectorTab) => {
     setSelection(s);
-    if (focusTab) setTab(focusTab);
-  }, []);
+    if (focusTab) openTab(focusTab);
+  }, [openTab]);
 
   const onGraphSelect = useCallback((s: Selection) => {
     setSelection(s);
@@ -135,9 +152,10 @@ export default function App() {
   }, []);
 
   const onConnectPair = useCallback((from: StateId, to: StateId) => {
+    // A new transition is a draft that needs a probability, so the inspector must be visible.
     setSelection({ kind: 'transition', from, to });
-    setTab('state');
-  }, []);
+    openTab('state');
+  }, [openTab]);
 
   const addState = () => {
     const n = doc.stateOrder.length;
@@ -147,7 +165,7 @@ export default function App() {
     while (used.has(`State ${k}`)) k++;
     dispatch({ type: 'addState', id, label: `State ${k}`, x: 80 + (n % 4) * 190 + (Math.floor(n / 4) % 2) * 60, y: 80 + Math.floor(n / 4) * 170 });
     setSelection({ kind: 'state', id });
-    setTab('state');
+    openTab('state');
   };
 
   const replaceProject = (title: string, next: () => ChainDocumentV1) => {
@@ -174,6 +192,14 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
+
+  const inspectorTabs = [
+    { id: 'matrix' as const, label: 'Matrix', icon: <Grid3x3 size={14} />, railIcon: <Grid3x3 /> },
+    { id: 'state' as const, label: 'State', icon: <Info size={14} />, railIcon: <Info /> },
+    { id: 'validate' as const, label: 'Validate', icon: <ListChecks size={14} />, railIcon: <ListChecks />, badge: errorCount ? <span className="badge badge-error">{errorCount}</span> : undefined },
+    { id: 'sequence' as const, label: 'Sequence', icon: <Route size={14} />, railIcon: <Route /> },
+    { id: 'explain' as const, label: 'Explain', icon: <BookOpen size={14} />, railIcon: <BookOpen /> },
+  ];
 
   const SaveIcon = project.saveStatus === 'failed' ? CloudOff : project.saveStatus === 'saving' ? Loader2 : Cloud;
   const themeOptions: { v: ThemePreference; icon: JSX.Element; label: string }[] = [
@@ -271,7 +297,7 @@ export default function App() {
             </div>
           </header>
 
-          <main id="main" className="workspace" tabIndex={-1} aria-labelledby="modeler-h">
+          <main id="main" className={`workspace${inspectorOpen ? '' : ' inspector-hidden'}`} tabIndex={-1} aria-labelledby="modeler-h">
             <h1 id="modeler-h" className="visually-hidden">Modeler: {doc.title || 'Untitled model'}</h1>
             <div className="canvas-column">
               <div className="canvas">
@@ -280,6 +306,7 @@ export default function App() {
                 )}
                 <GraphEditor
                   doc={doc}
+                  layoutKey={`${inspectorOpen}|${navCollapsed}`}
                   colorMode={resolved}
                   selection={selection}
                   draft={draft}
@@ -309,7 +336,7 @@ export default function App() {
                 <span>{doc.transitions.filter((t) => t.probability > 0).length} transitions</span>
                 {errorCount === 0
                   ? <span className="ok"><CheckCircle2 size={12} aria-hidden /> Valid</span>
-                  : <button className="btn btn-ghost btn-sm bad" onClick={() => setTab('validate')}><AlertCircle size={12} aria-hidden /> {errorCount} issue{errorCount > 1 ? 's' : ''}</button>}
+                  : <button className="btn btn-ghost btn-sm bad" onClick={() => openTab('validate')}><AlertCircle size={12} aria-hidden /> {errorCount} issue{errorCount > 1 ? 's' : ''}</button>}
                 {doc.metadata.stepLabel && <span>1 step = 1 {doc.metadata.stepLabel}</span>}
                 {lowerMode === 'sample' && sim.current && <span>Simulation step {sim.current.step}</span>}
                 <span className="subtle">revision {doc.modelRevision}</span>
@@ -335,20 +362,33 @@ export default function App() {
               </section>
             </div>
 
-            <aside className="inspector" aria-label="Inspector">
-              <Tabs<InspectorTab>
-                label="Inspector"
-                idPrefix="insp"
-                active={tab}
-                onChange={setTab}
-                tabs={[
-                  { id: 'matrix', label: 'Matrix', icon: <Grid3x3 size={14} /> },
-                  { id: 'state', label: 'State', icon: <Info size={14} /> },
-                  { id: 'validate', label: 'Validate', icon: <ListChecks size={14} />, badge: errorCount ? <span className="badge badge-error">{errorCount}</span> : undefined },
-                  { id: 'sequence', label: 'Sequence', icon: <Route size={14} /> },
-                  { id: 'explain', label: 'Explain', icon: <BookOpen size={14} /> },
-                ]}
-              />
+            {!inspectorOpen && (
+              <aside className="inspector-rail" aria-label="Inspector (hidden)">
+                <button ref={inspectorToggleRef} className="nav-link" onClick={() => toggleInspector(true)} title="Show inspector" aria-label="Show inspector" aria-expanded={false} aria-controls="inspector">
+                  <ChevronsLeft />
+                </button>
+                <div className="inspector-rail-sep" aria-hidden />
+                {inspectorTabs.map((t) => (
+                  <button key={t.id} className="nav-link" onClick={() => openTab(t.id)} title={t.label} aria-label={`Show inspector: ${t.label}${t.id === 'validate' && errorCount ? ` (${errorCount} issue${errorCount > 1 ? 's' : ''})` : ''}`}>
+                    {t.railIcon}
+                    {t.id === 'validate' && errorCount > 0 && <span className="rail-dot" aria-hidden />}
+                  </button>
+                ))}
+              </aside>
+            )}
+            <aside className="inspector" id="inspector" aria-label="Inspector" hidden={!inspectorOpen}>
+              <div className="inspector-head">
+                <Tabs<InspectorTab>
+                  label="Inspector"
+                  idPrefix="insp"
+                  active={tab}
+                  onChange={setTab}
+                  tabs={inspectorTabs}
+                />
+                <button ref={inspectorOpen ? inspectorToggleRef : undefined} className="btn btn-ghost btn-icon btn-sm inspector-toggle" onClick={() => toggleInspector(false)} title="Hide inspector" aria-label="Hide inspector" aria-expanded={true} aria-controls="inspector">
+                  <ChevronsRight size={16} />
+                </button>
+              </div>
               <div className="inspector-body" role="tabpanel" id={`insp-panel-${tab}`} aria-labelledby={`insp-tab-${tab}`}>
                 {tab === 'matrix' && (
                   <>
@@ -418,7 +458,7 @@ export default function App() {
           <Dialog size="sm" title={`Delete “${name}”?`} onClose={() => setPending(null)} footer={
             <>
               <button className="btn" onClick={() => setPending(null)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => { dispatch({ type: 'deleteState', id: pending.id }); setPending(null); if (impact.rows.length || impact.initialMass > 0) setTab('validate'); }}>Delete state</button>
+              <button className="btn btn-danger" onClick={() => { dispatch({ type: 'deleteState', id: pending.id }); setPending(null); if (impact.rows.length || impact.initialMass > 0) openTab('validate'); }}>Delete state</button>
             </>
           }>
             <p>This removes {name}, its row and column, and every transition into or out of it. Undo restores it.</p>
