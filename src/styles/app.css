@@ -272,7 +272,10 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .example-body p { margin: 0; font-size: 13px; color: var(--text-muted); }
 
 /* ── Theory ───────────────────────────────────────────────────── */
-.theory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 16px 0; }
+.theory-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.theory-grid .card { display: flex; flex-direction: column; }
+.theory-grid .theory-more { margin-top: auto; padding-top: 8px; }
+@media (max-width: 640px) { .theory-grid { grid-template-columns: minmax(0, 1fr); } }
 .theory-grid .card h4 { display: flex; align-items: center; gap: 8px; }
 .theory-grid .card h4 svg { color: var(--primary); }
 .theory-grid .card p { font-size: 13px; color: var(--text-muted); margin: 0; }
