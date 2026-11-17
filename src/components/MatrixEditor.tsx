@@ -1,58 +1,209 @@
-import { MarkovNode } from '../hooks/useMarkovModel';
+import { useId, useRef, useState } from 'react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  compensatedSum, EPS_ROW, formatProbability, formatSigned, formatTotal, initialVector, parseProbability, rowOf,
+  type ChainDocumentV1, type Command, type StateId,
+} from '../domain/markov';
+import type { Selection } from '../app/selection';
 
-interface MatrixEditorProps {
-  nodes: MarkovNode[];
-  matrix: number[][];
-  onUpdateProbability: (sourceId: string, targetId: string, prob: number) => void;
+interface ProbabilityInputProps {
+  value: number;
+  label: string;
+  selected?: boolean;
+  onCommit: (value: number, coalesceKey: string) => void;
+  onFocus?: () => void;
+  inputRef?: (el: HTMLInputElement | null) => void;
 }
 
-export default function MatrixEditor({ nodes, matrix, onUpdateProbability }: MatrixEditorProps) {
+/** Edit buffer for one probability: drafts and invalid text never reach the model (PLAN.md §4.2). */
+export function ProbabilityInput({ value, label, onCommit, onFocus, inputRef }: ProbabilityInputProps) {
+  const [text, setText] = useState<string | null>(null);
+  const original = useRef(value);
+  const session = useRef('');
+  const errorId = useId();
+  const parsed = text === null ? null : parseProbability(text);
+  const problem = parsed && parsed.kind !== 'value' ? parsed.message : null;
+
   return (
-    <div className="matrix-editor" style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', overflowX: 'auto' }}>
-      <h3 style={{ marginTop: 0 }}>Transition Matrix</h3>
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-         <thead>
-           <tr>
-             <th style={{ padding: '0.5rem' }}>From \ To</th>
-             {nodes.map(n => <th key={n.id} style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>{n.name}</th>)}
-           </tr>
-         </thead>
-         <tbody>
-           {nodes.map((source, i) => {
-             const rowSum = matrix[i].reduce((a, b) => a + b, 0);
-             const isValidRow = Math.abs(rowSum - 1.0) < 0.01 || rowSum === 0; // 0 is okay for absorbing (we might normalize later)
-             
-             return (
-               <tr key={source.id}>
-                 <th style={{ padding: '0.5rem', borderRight: '1px solid var(--border-color)', textAlign: 'left' }}>
-                   {source.name}
-                   {!isValidRow && <span style={{ color: '#ef4444', fontSize: '12px', marginLeft: '8px' }}>Sum ≠ 1</span>}
-                 </th>
-                 {nodes.map((target, j) => (
-                   <td key={target.id} style={{ padding: '0.5rem' }}>
-                     <input 
-                       type="number"
-                       step="0.05"
-                       min="0"
-                       max="1"
-                       value={matrix[i][j]}
-                       onChange={(e) => onUpdateProbability(source.id, target.id, parseFloat(e.target.value) || 0)}
-                       style={{ 
-                         width: '60px', 
-                         padding: '4px', 
-                         background: 'var(--bg-primary)', 
-                         color: 'var(--text-primary)', 
-                         border: '1px solid var(--border-color)',
-                         borderRadius: '4px'
-                       }}
-                     />
-                   </td>
-                 ))}
-               </tr>
-             )
-           })}
-         </tbody>
-      </table>
+    <>
+      <input
+        ref={inputRef}
+        className={`input cell-input${value === 0 && text === null ? ' zero' : ''}`}
+        inputMode="decimal"
+        aria-label={label}
+        aria-invalid={parsed?.kind === 'invalid' || undefined}
+        aria-describedby={problem ? errorId : undefined}
+        value={text ?? formatProbability(value)}
+        title={text === null ? String(value) : undefined}
+        onFocus={(e) => {
+          original.current = value;
+          session.current = `${label}-${Date.now()}`;
+          setText(String(value));
+          onFocus?.();
+          requestAnimationFrame(() => e.target.select());
+        }}
+        onChange={(e) => {
+          setText(e.target.value);
+          const p = parseProbability(e.target.value);
+          if (p.kind === 'value' && p.value !== value) onCommit(p.value, session.current);
+        }}
+        onBlur={() => {
+          if (parsed?.kind === 'value' || parsed === null) setText(null);
+          else if (parsed.kind === 'draft') setText(null); // empty/incomplete: keep the last committed value
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') {
+            if (value !== original.current) onCommit(original.current, session.current);
+            setText(null);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+      />
+      {problem && text !== null && <span id={errorId} className="visually-hidden">{problem}</span>}
+    </>
+  );
+}
+
+interface MatrixEditorProps {
+  doc: ChainDocumentV1;
+  selection: Selection;
+  onSelect: (s: Selection) => void;
+  dispatch: (c: Command, coalesceKey?: string) => void;
+  cellRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  /** Rows shown read-only (e.g. a challenge's fixed rows). */
+  lockedRows?: readonly StateId[];
+}
+
+export default function MatrixEditor({ doc, selection, onSelect, dispatch, cellRefs, lockedRows }: MatrixEditorProps) {
+  const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
+  const [typingError, setTypingError] = useState<string | null>(null);
+
+  if (doc.stateOrder.length === 0) {
+    return <div className="empty-state"><h4>No states yet</h4><p>Create your first state, or open an example to explore a working model.</p></div>;
+  }
+
+  const selFrom = selection?.kind === 'transition' ? selection.from : selection?.kind === 'state' ? selection.id : null;
+  const selTo = selection?.kind === 'transition' ? selection.to : null;
+
+  return (
+    <div>
+      <div className="table-wrap" onInput={(e) => {
+        const p = parseProbability((e.target as HTMLInputElement).value);
+        setTypingError(p.kind === 'invalid' ? p.message : null);
+      }}>
+        <table className="table matrix">
+          <caption className="visually-hidden">Transition matrix: rows are the current state (From), columns are the next state (To).</caption>
+          <thead>
+            <tr>
+              <th className="corner" scope="col">From ↓ / To →</th>
+              {doc.stateOrder.map((id) => (
+                <th key={id} scope="col" className={selTo === id ? 'col-selected' : ''} title={label(id)}>{label(id)}</th>
+              ))}
+              <th scope="col" className="numeric">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {doc.stateOrder.map((from) => {
+              const row = rowOf(doc, from);
+              const sum = compensatedSum(row);
+              const valid = Math.abs(sum - 1) <= EPS_ROW;
+              return (
+                <tr key={from} className={`${valid ? '' : 'row-invalid'} ${selFrom === from ? 'row-selected' : ''}`}>
+                  <th scope="row" title={label(from)}>{label(from)}{lockedRows?.includes(from) && <span className="visually-hidden"> (fixed)</span>}</th>
+                  {doc.stateOrder.map((to, j) => {
+                    const key = `${from}->${to}`;
+                    const isSel = selection?.kind === 'transition' && selection.from === from && selection.to === to;
+                    if (lockedRows?.includes(from)) {
+                      return <td key={to} className="numeric locked" title="This row is fixed in this exercise">{row[j] === 0 ? <span className="subtle">0</span> : formatProbability(row[j])}</td>;
+                    }
+                    return (
+                      <td key={to} className={isSel ? 'selected' : ''}>
+                        <ProbabilityInput
+                          value={row[j]}
+                          label={`From ${label(from)} to ${label(to)} probability`}
+                          inputRef={(el) => { cellRefs.current[key] = el; }}
+                          onFocus={() => onSelect({ kind: 'transition', from, to })}
+                          onCommit={(v, k) => dispatch({ type: 'setProbability', from, to, probability: v }, k)}
+                        />
+                      </td>
+                    );
+                  })}
+                  <td className="total">
+                    {valid ? (
+                      <span className="badge badge-success" title="Row totals 1"><CheckCircle2 size={12} aria-hidden /> 1</span>
+                    ) : (
+                      <span className="badge badge-error" title={`Total ${formatTotal(sum)} (${formatSigned(sum - 1)})`}>
+                        <AlertCircle size={12} aria-hidden /> {formatTotal(sum)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {typingError && <div className="cell-error" role="alert"><AlertCircle size={14} /> {typingError}</div>}
+      <p className="hint" style={{ marginTop: 8 }}>
+        Each row lists where the chain goes next from that state; rows must total exactly 1. Setting a cell to 0 removes that transition. Type, then press <kbd>Enter</kbd>; <kbd>Esc</kbd> restores the value you started with.
+      </p>
+    </div>
+  );
+}
+
+export function InitialDistributionEditor({ doc, dispatch }: { doc: ChainDocumentV1; dispatch: (c: Command, k?: string) => void }) {
+  const mu = initialVector(doc);
+  const single = mu.filter((v) => v > 0).length === 1 && mu.some((v) => v === 1);
+  const [custom, setCustom] = useState(!single);
+  const sum = compensatedSum(mu);
+  const valid = Math.abs(sum - 1) <= EPS_ROW;
+  const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
+  if (!doc.stateOrder.length) return null;
+  const startId = doc.stateOrder[mu.findIndex((v) => v === 1)] ?? '';
+
+  return (
+    <div>
+      <div className="segmented" role="group" aria-label="Starting distribution mode" style={{ marginBottom: 10 }}>
+        <button className="btn btn-sm" aria-pressed={!custom} onClick={() => { setCustom(false); if (!single) dispatch({ type: 'setSingleStart', stateId: doc.stateOrder[Math.max(0, mu.indexOf(Math.max(...mu)))] }); }}>Single starting state</button>
+        <button className="btn btn-sm" aria-pressed={custom} onClick={() => setCustom(true)}>Custom distribution</button>
+      </div>
+      {!custom ? (
+        <div className="field">
+          <label htmlFor="start-state">Starting state</label>
+          <select id="start-state" className="select input-sm" value={startId} onChange={(e) => dispatch({ type: 'setSingleStart', stateId: e.target.value })}>
+            {!startId && <option value="" disabled>Choose a state…</option>}
+            {doc.stateOrder.map((id) => <option key={id} value={id}>{label(id)}</option>)}
+          </select>
+          <span className="hint">The chain is in this state at step 0 with probability 1.</span>
+        </div>
+      ) : (
+        <>
+          <div className="table-wrap">
+            <table className="table matrix">
+              <caption className="visually-hidden">Starting distribution μ₀</caption>
+              <thead><tr><th scope="col">State</th><th scope="col" className="numeric">μ₀</th></tr></thead>
+              <tbody>
+                {doc.stateOrder.map((id, i) => (
+                  <tr key={id}>
+                    <th scope="row">{label(id)}</th>
+                    <td className="numeric">
+                      <ProbabilityInput value={mu[i]} label={`Starting probability of ${label(id)}`} onCommit={(v, k) => dispatch({ type: 'setInitial', stateId: id, probability: v }, k)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <span className="field-label">Starting total</span>
+            {valid
+              ? <span className="badge badge-success"><CheckCircle2 size={12} aria-hidden /> 1</span>
+              : <span className="badge badge-error"><AlertCircle size={12} aria-hidden /> {formatTotal(sum)}</span>}
+            {!valid && sum > 0 && <button className="btn btn-sm" onClick={() => dispatch({ type: 'normalizeInitial' })}>Normalize</button>}
+          </div>
+        </>
+      )}
     </div>
   );
 }

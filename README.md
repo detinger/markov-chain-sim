@@ -1,85 +1,182 @@
 # 🔮 Markov Chain Simulator
 
-An interactive visualization and simulation tool for Markov Chains. Built with React and TypeScript, this application allows users to design, simulate, and analyze discrete-time Markov processes through an intuitive graphical interface.
+An interactive web app for learning and exploring discrete-time Markov chains. You can:
 
-## 🚀 Features
+- draw a chain on a canvas;
+- check that it is valid;
+- watch a seeded random path unfold;
+- compute exact long-run and first-passage results;
+- run Monte Carlo experiments with honest uncertainty;
+- compare a baseline with an alternative;
+- learn the theory through lessons and graded challenges.
 
-### 1. Interactive Graph Editor
-
-* **Floating Arcs**: Beautifully curved transition lines that automatically separate bidirectional paths (A→B and B→A) into an elegant "eye" shape.
-* **Dynamic Nodes**: Add as many states as you need. Drag them effortlessly around the canvas to organize your model.
-* **Inline Renaming**: Double-click any state name to edit it instantly.
-
-### 2. Live Transition Matrix
-
-* Edit transition probabilities directly in a clean, tabular format.
-* The matrix perfectly synchronizes with the visual graph in real-time.
-* Automatic validation of row sums.
-
-### 3. Simulation & Analysis
-
-* **Joint Probability Calculator**: Build a sequence of states (e.g., *Sunny → Rainy → Rainy*) and get the exact joint probability of that specific path.
-* **Stationary Distribution**: View the long-term steady-state probabilities of your system.
-* **State Distribution Chart**: Visualize how state probabilities evolve over time steps using interactive charts.
-
-### 4. Educational Resources
-
-* **Theory Quick Reference**: Built-in guide covering the Markov Property, Transition Matrices, Absorbing States, and more.
-* **Curated Examples**:
-  * *Weather Model*: Simple 2-state introduction.
-  * *Casino Heist*: A complex risk/reward model with absorbing "Ruin" and "Rich" states.
-  * *The Doomscroll Trap*: A 7-state psychological model of social media engagement.
-  * *SIR Epidemic Model*: Standard epidemiological transition model.
-
-## 🛠 Tech Stack
-
-* **Framework**: [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
-* **Language**: [TypeScript](https://www.typescriptlang.org/)
-* **Graph Engine**: [@xyflow/react](https://reactflow.dev/)
-* **Charts**: [Recharts](https://recharts.org/)
-* **Icons**: [Lucide React](https://lucide.dev/)
-* **Styling**: Vanilla CSS with Glassmorphism and Modern Aesthetics
-
-## 📦 Installation & Setup
-
-Ensure you have [Node.js](https://nodejs.org/) installed on your system.
-
-1. **Clone the repository** (or download the source):
-
-    ```bash
-    git clone <repository-url>
-    cd MarkovChain
-    ```
-
-2. **Install dependencies**:
-
-    ```bash
-    npm install
-    ```
-
-3. **Run the development server**:
-
-    ```bash
-    npm run dev
-    ```
-
-    The application will be available at `http://localhost:5173` (or the port specified in your terminal).
-
-4. **Build for production**:
-
-    ```bash
-    npm run build
-    ```
-
-## 📖 How to Use
-
-1. **Add States**: Use the "+ Add State" button in the top header.
-2. **Connect**: Drag from the center of one state to another to create a transition.
-3. **Rename**: Double-click the text in a circle to rename that state.
-4. **Edit Probabilities**: Use the "Transition Matrix" on the right to input exact values.
-5. **Calculate Paths**: Click the state buttons in the "Sequence Probability Calculator" to see the odds of a specific chain of events.
-6. **Reset**: Use the "New Model" button to start a fresh canvas.
+Everything runs in the browser. There is no backend, no account, and no data leaves your device.
 
 ---
 
-*Designed for students exploring probabilistic systems.*
+## Features
+
+The pages below are listed in the order they appear in the left navigation.
+
+| Page | What you can do |
+| --- | --- |
+| **Home** | Start page with an overview of every feature, your progress, and one-click links to continue learning or modeling. It also shows what is stored on this device, with **Clear all data**. |
+| **Theory** | A quick-reference page covering the core definitions and formulas, each linked to the lesson that explains it. |
+| **Lessons** | 12 lessons across five levels: foundations, evolution, long-run behavior, absorption, and experiments. Each has a worked model, an interactive demo, a common mistake, and a knowledge check. |
+| **Examples** | The original story models (Weather, Stock Market, Mini PageRank, SIR, Casino Heist, Doomscroll Trap) with their assumptions and limits stated. There are also six small teaching examples. Opening one loads it into the Modeler. |
+| **Challenges** | 12 exercises, from repairing a row to interpreting simulation uncertainty. They are graded from exact calculations, explain common wrong answers, show a rubric checklist, and offer progressive hints. |
+| **Modeler** | Add states, drag between them to create transitions, and edit probabilities on the canvas or in the transition matrix. The **Validate** tab explains every problem and offers undoable repairs. The **Sequence** tab computes path probabilities, and **Explain** summarizes the chain's structure. Undo and redo with Ctrl/⌘+Z. |
+| **Simulation** (Modeler's bottom panel) | Shows the exact distribution μₜ over time, or animates one seeded sample path. The same seed always gives the same path. *Explain this step* shows the random draw. Traces export to CSV. |
+| **Analysis** | Communicating classes, periods, stationary distribution(s), absorption probabilities, and expected visits. For a target set: hitting probabilities, unconditional and conditional expected hitting times, Pr(T ≤ t), and mean return times. |
+| **Experiments** | Thousands of independent seeded trajectories, run in a background worker you can cancel. Estimates come with 95% Wilson or Student-t intervals and explicit censoring, next to the exact values. Results export as CSV or a full run bundle. |
+| **Compare** | Freeze the current model as a baseline, edit a copy, and compare exact results under one shared definition. Changes are shown in percentage points, and relative change only where it is defined. Includes row-preserving parameter sweeps and an optional simulation check. Nothing is called "better" unless you state a goal. |
+
+### Layout
+
+- The app starts with an empty model. Open an example or add your first state to begin.
+- Both side panes can be hidden: the navigation with **Collapse**, and the right-hand inspector with its **»** button.
+- In the Modeler, drag the inspector's left edge to change its width and the bottom panel's top edge to change its height. Double-click an edge to reset it. The edges can also be adjusted with the arrow keys.
+- Light, dark, and system themes are supported.
+- The layout works from phone width up, and every control is reachable by keyboard.
+
+### Where your data lives
+
+| Data | Where |
+| --- | --- |
+| Current model | Autosaved in this browser's local storage. Use **Export / Import** for `.markov.json` files. |
+| Comparison baseline | Saved separately in local storage. |
+| Learning progress | Saved in local storage. It can be exported or reset from the Lessons page. |
+| Preferences | Theme and panel layout (hidden panes, widths, heights), saved in local storage. |
+
+To remove everything at once, use **Home → Your data → Clear all data**. You can download your model and export your progress first. Clearing site data in the browser also removes all of these.
+
+---
+
+## Quick start
+
+You need **Node.js 20 or newer** (22 recommended; see `.nvmrc`).
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Development server with hot reload |
+| `npm run build` | Typecheck and build the production site into `dist/` |
+| `npm start` | Serve `dist/` with the bundled production server (`server.mjs`, port `$PORT` or 3000) |
+| `npm run preview` | Vite's local preview of `dist/` |
+| `npm test -- --run` | Run the unit tests once (Vitest) |
+| `npm run typecheck` | TypeScript check only |
+
+---
+
+## Deployment
+
+The build is a static site: `npm run build` produces `dist/`, which contains `index.html` and hashed files under `assets/`, including the experiment worker. No environment variables are needed. `dist/` is not committed; each host builds it.
+
+### Netlify
+
+The repository includes `netlify.toml`, so no settings need to be entered by hand.
+
+1. In Netlify choose **Add new site → Import an existing project** and pick this repository.
+2. Netlify reads `netlify.toml`:
+   - build command `npm run build`;
+   - publish directory `dist`;
+   - Node 22;
+   - a one-year cache for `/assets/*`;
+   - basic security headers;
+   - a fallback to `index.html`.
+3. Deploy.
+
+From the command line instead:
+
+```bash
+npm install -g netlify-cli
+netlify deploy --build          # draft URL
+netlify deploy --build --prod   # production
+```
+
+### Railway
+
+The repository includes `railway.json` and a dependency-free Node server (`server.mjs`).
+
+1. In Railway choose **New Project → Deploy from GitHub repo** and pick this repository.
+2. Railway reads `railway.json`:
+   - build with `npm run build`;
+   - start with `npm start`;
+   - health check at `/healthz`;
+   - restart on failure.
+3. Under **Settings → Networking**, choose **Generate Domain** to get a public URL.
+
+The server:
+- listens on Railway's `$PORT`;
+- serves files with correct content types and gzip;
+- caches hashed assets for a year and revalidates `index.html`;
+- returns 404 for missing files, falls back to the app for other paths, and refuses requests outside `dist/`.
+
+From the command line instead:
+
+```bash
+npm install -g @railway/cli
+railway login
+railway init        # or: railway link
+railway up
+```
+
+### Any other host
+
+- **Static hosting:** upload `dist/` after `npm run build`.
+- **A Node host:** run `npm run build` and then `npm start`.
+
+---
+
+## Project structure
+
+```
+src/
+  domain/          Pure TypeScript, no React — all mathematics lives here
+    markov/        Document model, validation, structure, exact analysis
+    simulation/    Seeded RNG, trajectories, Monte Carlo engine
+    statistics/    Wilson, Student t, Newcombe, Welch intervals
+    comparison/    Baseline/alternative alignment, metrics, sweeps
+    assessment/    Challenge grading and answer diagnosis
+  features/        Pages: home, theory, examples, learning, challenges, simulation,
+                   analysis, experiments, comparison
+  components/      Shared UI (graph editor, matrix editor, inspector panels, dialogs, …)
+  app/             Project state (undo/redo, autosave), theme, clear-all-data
+  data/            Versioned lessons and challenges
+  lib/examples.ts  Example models (original data preserved verbatim)
+  workers/         Experiment web worker
+  styles/          Design tokens and styles (see STYLE.md)
+tests/unit/        Vitest suites for the domain code and teaching content
+docs/architecture/ Decision records 0001–0006
+server.mjs         Production static server (Railway / Node hosts)
+```
+
+### Design notes
+
+The decisions are recorded in [`docs/architecture/`](docs/architecture/):
+- **Mathematics:** row orientation, numerical tolerances, and how analyses are solved (ADR 0001).
+- **Reproducibility:** the `markov-ctr32x2-v1` random-number generator and how each step consumes draws (ADR 0002).
+- **Statistics:** intervals and censoring (ADR 0003).
+- **Comparison:** how baselines and alternatives are compared (ADR 0005).
+- **Assessment:** how answers are graded (ADR 0004 and 0006).
+
+[`PLAN.md`](PLAN.md) is the upgrade plan, and [`STYLE.md`](STYLE.md) is the design system.
+
+## Tech stack
+
+- React 18
+- TypeScript
+- Vite 5
+- [@xyflow/react](https://reactflow.dev/) for the graph canvas
+- [Recharts](https://recharts.org/) for charts
+- [Lucide](https://lucide.dev/) for icons
+- Vanilla CSS with design tokens
+- [Vitest](https://vitest.dev/) for unit tests
+
+---
+
+*Designed for students exploring probabilistic systems. The example models are illustrative, not empirical data or advice.*

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -12,21 +13,24 @@ export default function ArcEdge({
   target,
   style = {},
   markerEnd,
-  label
+  label,
+  selected,
+  data
 }: EdgeProps) {
+  const edgeData = (data ?? {}) as { draft?: boolean; onSelect?: () => void; description?: string; token?: { key: string; duration: number } | null; active?: boolean };
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
   const edges = useEdges();
 
   if (!sourceNode || !targetNode) return null;
 
-  const getCenter = (node: any) => ({
+  const getCenter = (node: typeof sourceNode) => ({
     x:
       (node.internals.positionAbsolute?.x ?? 0) +
-      (node.measured.width ?? 0) / 2,
+      (node.measured?.width ?? 0) / 2,
     y:
       (node.internals.positionAbsolute?.y ?? 0) +
-      (node.measured.height ?? 0) / 2
+      (node.measured?.height ?? 0) / 2
   });
 
   const sourceCenter = getCenter(sourceNode);
@@ -70,17 +74,9 @@ export default function ArcEdge({
 
     path = `M ${sx} ${sy} A ${loopRadius} ${loopRadius} 0 1 1 ${tx} ${ty}`;
 
-
-const distance = nodeRadius + loopRadius * 1.45;
-
-labelX =
-  sourceCenter.x + distance * Math.cos(finalAngle);
-
-labelY =
-  sourceCenter.y + distance * Math.sin(finalAngle);
-
-
-
+    const distance = nodeRadius + loopRadius * 1.45;
+    labelX = sourceCenter.x + distance * Math.cos(finalAngle);
+    labelY = sourceCenter.y + distance * Math.sin(finalAngle);
   } else {
     const dx = targetCenter.x - sourceCenter.x;
     const dy = targetCenter.y - sourceCenter.y;
@@ -166,32 +162,51 @@ labelY =
 
   return (
     <>
-      <BaseEdge path={path} markerEnd={markerEnd} style={style} />
+      <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={14} className={edgeData.active ? 'sim-active' : undefined} />
+      {edgeData.token && <TokenOnPath key={edgeData.token.key} path={path} duration={edgeData.token.duration} />}
 
       {label && (
         <EdgeLabelRenderer>
-          <div
-            style={{
-              position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-              background: '#1e293b',
-              padding: '1px 5px',
-              borderRadius: '4px',
-              fontSize: 10,
-              fontWeight: 700,
-              color: '#f8fafc',
-              border: '1px solid var(--accent)',
-              pointerEvents: 'all',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.5)',
-              zIndex: 1000,
-              whiteSpace: 'nowrap'
-            }}
-            className="nodrag nopan"
+          <button
+            type="button"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+            className={`edge-label nodrag nopan${selected ? ' selected' : ''}${edgeData.draft ? ' draft' : ''}`}
+            onClick={edgeData.onSelect}
+            aria-label={edgeData.description}
           >
             {label}
-          </div>
+          </button>
         </EdgeLabelRenderer>
       )}
     </>
+  );
+}
+
+/** Simulation token travelling along the same path users see (STYLE.md §15.3). */
+function TokenOnPath({ path, duration }: { path: string; duration: number }) {
+  const ref = useRef<SVGPathElement>(null);
+  const [pt, setPt] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const total = el.getTotalLength();
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - start) / duration);
+      const eased = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+      const p = el.getPointAtLength(total * eased);
+      setPt({ x: p.x, y: p.y });
+      if (k < 1) frame = requestAnimationFrame(tick);
+      else setPt(null);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [path, duration]);
+  return (
+    <g aria-hidden="true">
+      <path ref={ref} d={path} fill="none" stroke="none" />
+      {pt && <circle className="simulation-token" cx={pt.x} cy={pt.y} r={7} />}
+    </g>
   );
 }
