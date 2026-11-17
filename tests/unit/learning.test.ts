@@ -20,8 +20,8 @@ describe('lesson fixtures', () => {
     Object.values(ISSUE_LESSONS).forEach((id) => expect(LESSON_BY_ID[id]).toBeDefined());
   });
 
-  it('cover levels 1–4 with a mistake and a knowledge check in every lesson', () => {
-    expect(new Set(LESSONS.map((l) => l.level))).toEqual(new Set([1, 2, 3, 4]));
+  it('cover levels 1–5 with a mistake and a knowledge check in every lesson', () => {
+    expect(new Set(LESSONS.map((l) => l.level))).toEqual(new Set([1, 2, 3, 4, 5]));
     for (const l of LESSONS) {
       expect(l.sections.some((s) => s.kind === 'mistake')).toBe(true);
       expect(l.sections.some((s) => s.kind === 'check' || s.kind === 'numeric-check')).toBe(true);

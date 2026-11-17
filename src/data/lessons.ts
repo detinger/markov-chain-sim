@@ -12,12 +12,19 @@ export type LessonSection =
   | { kind: 'mistake'; text: string }
   | { kind: 'check'; id: string; question: string; choices: string[]; correct: number; explanation: string }
   | { kind: 'numeric-check'; id: string; question: string; snapshot: ModelSnapshot; target: NumericTarget; tolerance: number; explanation: string }
-  | { kind: 'try'; text: string; challengeId: string };
+  | { kind: 'try'; text: string; challengeId: string }
+  /** Seeded Monte Carlo demo: estimate μ_H(state) with a chosen number of replications and compare to exact. */
+  | { kind: 'demo-experiment'; snapshot: ModelSnapshot; caption: string; horizon: number; state: string; seed: number; target?: string[] };
 
 export interface Lesson {
   id: string;
   version: number;
-  level: 1 | 2 | 3 | 4;
+  /**
+   * Oldest content version whose saved progress is still valid (e.g. only links were added).
+   * Older progress is reset with an explanation.
+   */
+  progressCompatibleFrom?: number;
+  level: 1 | 2 | 3 | 4 | 5;
   title: string;
   objective: string;
   prerequisites: string[];
@@ -31,6 +38,7 @@ export const LEVELS: Record<number, { title: string; outcome: string }> = {
   2: { title: 'Evolution', outcome: 'Distinguish a specific path from all paths ending in a state.' },
   3: { title: 'Long-run behavior', outcome: 'Explain why stationary need not mean convergent.' },
   4: { title: 'Absorption', outcome: 'Separate eventual absorption, occupancy, and time to reach a target.' },
+  5: { title: 'Experiments', outcome: 'Compare estimates to exact calculations and explain their limitations.' },
 };
 
 const s = (id: string, label: string, x: number, y: number) => ({ id, label, x, y });
@@ -54,7 +62,7 @@ const GAMBLE: ModelSnapshot = {
   states: [s('play', 'Playing', 180, 0), s('ruin', 'Ruin', 0, 180), s('rich', 'Rich', 360, 180)],
   P: [[0.5, 0.2, 0.3], [0, 1, 0], [0, 0, 1]], mu0: [1, 0, 0],
 };
-const ERRANDS: ModelSnapshot = {
+export const ERRANDS: ModelSnapshot = {
   title: 'Errands', stepLabel: 'hour',
   states: [s('home', 'Home', 0, 0), s('shop', 'Shop', 260, 0), s('cafe', 'Café', 130, 180)],
   P: [[0.5, 0.5, 0], [0.3, 0.2, 0.5], [0.4, 0, 0.6]], mu0: [1, 0, 0],
@@ -166,7 +174,7 @@ export const LESSONS: Lesson[] = [
     next: 'longrun.classes',
   },
   {
-    id: 'longrun.classes', version: 1, level: 3, minutes: 10,
+    id: 'longrun.classes', version: 2, progressCompatibleFrom: 1, level: 3, minutes: 10,
     title: 'Communicating classes',
     objective: 'Identify communicating classes, closed classes, and transient states from the graph.',
     prerequisites: ['evolution.paths'],
@@ -180,11 +188,12 @@ export const LESSONS: Lesson[] = [
       { kind: 'mistake', text: 'Calling an unreachable state an error. D is valid: it is its own closed class that the chain never visits from A. Reducible chains are perfectly runnable.' },
       { kind: 'check', id: 'q1', question: 'Which state is transient?', choices: ['A', 'B', 'D'], correct: 0,
         explanation: 'From A the chain can go to B, but nothing leads back to A. {B, C} and {D} are closed.' },
+      { kind: 'try', text: 'Classify a reducible graph, including a part the chain never reaches.', challengeId: 'find-closed-classes' },
     ],
     next: 'longrun.stationary',
   },
   {
-    id: 'longrun.stationary', version: 1, level: 3, minutes: 12,
+    id: 'longrun.stationary', version: 2, progressCompatibleFrom: 1, level: 3, minutes: 12,
     title: 'Stationary is not the same as convergent',
     objective: 'Explain why a chain can have a stationary distribution without μₜ converging to it.',
     prerequisites: ['longrun.classes'],
@@ -199,11 +208,12 @@ export const LESSONS: Lesson[] = [
       { kind: 'check', id: 'q1', question: 'For the alternator, which statement is true?',
         choices: ['μₜ converges to [0.5, 0.5] from A', 'π = [0.5, 0.5] is stationary but μₜ from A does not converge', 'There is no stationary distribution'], correct: 1,
         explanation: 'The chain has period 2. π = [0.5, 0.5] satisfies πP = π, but starting from A the distribution alternates.' },
+      { kind: 'try', text: 'Analyze the deterministic alternator: stationary but not convergent.', challengeId: 'stationary-not-convergence' },
     ],
     next: 'absorption.outcomes',
   },
   {
-    id: 'absorption.outcomes', version: 1, level: 4, minutes: 12,
+    id: 'absorption.outcomes', version: 2, progressCompatibleFrom: 1, level: 4, minutes: 12,
     title: 'Absorbing states and eventual outcomes',
     objective: 'Compute eventual absorption probabilities and expected time to absorption.',
     prerequisites: ['longrun.classes'],
@@ -219,11 +229,13 @@ export const LESSONS: Lesson[] = [
       { kind: 'check', id: 'q1', question: 'Starting from Playing, what is the probability of eventually ending Rich?',
         choices: ['0.3', '0.5', '0.6'], correct: 2,
         explanation: 'Here Q = [0.5], so N = 1/(1 − 0.5) = 2 and Pr(Rich) = 2 × 0.3 = 0.6. The expected number of rounds is also 2.' },
+      { kind: 'try', text: 'Compute absorption probabilities and expected rounds for a two-table casino.', challengeId: 'casino-outcomes' },
+      { kind: 'try', text: 'Decide what the three-state SIR example can and cannot represent.', challengeId: 'diagnose-sir' },
     ],
     next: 'absorption.first-passage',
   },
   {
-    id: 'absorption.first-passage', version: 1, level: 4, minutes: 12,
+    id: 'absorption.first-passage', version: 2, progressCompatibleFrom: 1, level: 4, minutes: 12,
     title: 'Reaching a target versus being there',
     objective: 'Separate first arrival, occupancy at a step, and expected hitting time.',
     prerequisites: ['absorption.outcomes'],
@@ -237,6 +249,71 @@ export const LESSONS: Lesson[] = [
       { kind: 'check', id: 'q1', question: 'Some paths can get stuck where the target is unreachable. What is the unconditional expected hitting time?',
         choices: ['The average over paths that arrive', 'Infinite', 'Undefined, so we report 0'], correct: 1,
         explanation: 'With positive probability T_A = ∞, so E[T_A] = ∞. The average among paths that arrive is a different, conditional quantity.' },
+      { kind: 'try', text: 'Compute a first-arrival probability and an occupancy probability for the same target.', challengeId: 'first-hit-vs-occupancy' },
+    ],
+    next: 'experiments.estimates',
+  },
+  {
+    id: 'experiments.estimates', version: 1, level: 5, minutes: 12,
+    title: 'Seeds, replications, and uncertainty',
+    objective: 'Estimate a probability from independent seeded replications and judge its precision with an interval.',
+    prerequisites: ['evolution.n-step'],
+    sections: [
+      { kind: 'text', body: [
+        'A Monte Carlo experiment simulates M independent trajectories and counts how often an event happens. The fraction p̂ = k/M estimates the exact probability p.',
+        'A seed fixes the random numbers, so the same seed and model always give the same paths — that makes experiments reproducible, but it does not make the estimate exact. Each replication uses its own random stream, so the replications are independent.',
+        'The 95% Wilson interval expresses the sampling uncertainty. Its width shrinks like 1/√M: four times the replications roughly halves the width.',
+      ] },
+      { kind: 'formula', text: 'p̂ = k / M,   standard error ≈ √(p̂(1 − p̂)/M)', spoken: 'p hat equals k over M; its standard error is about the square root of p hat times one minus p hat, over M.' },
+      { kind: 'demo-experiment', snapshot: WEATHER, horizon: 10, state: 'rain', seed: 2024, caption: 'Estimate μ₁₀(Rainy) starting Sunny. Change the number of replications and compare the interval with the exact value.' },
+      { kind: 'mistake', text: 'Reading a simulated estimate as the true value. With 50 replications an estimate can easily be 10 percentage points off — and a different seed gives a different estimate. Always report M and an interval.' },
+      { kind: 'check', id: 'q1', question: 'You increase the number of replications from 500 to 2,000. What happens to the width of the 95% interval?',
+        choices: ['It roughly halves', 'It becomes about four times narrower', 'It stays the same, because the seed is fixed'], correct: 0,
+        explanation: 'Width scales with 1/√M. Four times the replications gives √4 = 2 times the precision.' },
+      { kind: 'try', text: 'Compare a small and a large experiment with the exact value.', challengeId: 'interpret-uncertainty' },
+    ],
+    next: 'experiments.censoring',
+  },
+  {
+    id: 'experiments.censoring', version: 1, level: 5, minutes: 10,
+    title: 'First-hit experiments and censoring',
+    objective: 'Report a simulated first-passage result honestly when some paths never reach the target within the horizon.',
+    prerequisites: ['experiments.estimates', 'absorption.first-passage'],
+    sections: [
+      { kind: 'text', body: [
+        'A simulation can only run for a finite horizon H. Paths that have not reached the target by H are right-censored: we know T_A > H, but not the actual value.',
+        'Three honest summaries remain: the fraction that hit by H (an estimate of Pr(T_A ≤ H)); the restricted mean E[min(T_A, H)], averaged over all paths; and the mean among paths that hit, which is conditional on hitting by H.',
+        'Dropping the censored paths and calling the rest “the mean hitting time” underestimates it — sometimes badly, and when the target may never be reached the true mean is infinite.',
+      ] },
+      { kind: 'demo-experiment', snapshot: ERRANDS, horizon: 6, state: 'shop', seed: 99, target: ['shop'], caption: 'Errands model, target Shop, horizon 6. Compare the fraction that arrived with the fraction that is at the Shop at step 6.' },
+      { kind: 'mistake', text: 'Averaging only the observed hitting times. That average is conditional on hitting by H; it is not the unconditional mean first-passage time.' },
+      { kind: 'check', id: 'q1', question: 'In 1,000 runs with H = 20, 900 paths reach the target and their average hitting time is 6. What can you say about E[T_A]?',
+        choices: ['E[T_A] = 6', 'E[T_A] is at least the restricted mean, which is larger than 6 because 100 paths count as 20', 'Nothing at all'], correct: 1,
+        explanation: 'The restricted mean is (900 × 6 + 100 × 20)/1000 = 7.4, and the true mean is at least that. The 6 is conditional on hitting by step 20.' },
+    ],
+    next: 'experiments.comparing',
+  },
+  {
+    id: 'experiments.comparing', version: 1, level: 5, minutes: 12,
+    title: 'Comparing a baseline and an alternative',
+    objective: 'Compare two scenarios on a shared metric, in percentage points, without assuming which direction is better.',
+    prerequisites: ['absorption.outcomes', 'experiments.estimates'],
+    sections: [
+      { kind: 'text', body: [
+        'To compare scenarios, freeze a baseline, change one thing, and evaluate both with the same metric definition, horizon, and target.',
+        'Report changes in probabilities as percentage points (pp): from 9% to 13% is +4 pp. A relative change, (new − old)/|old|, is only defined when the baseline is a finite, nonzero number.',
+        'Whether a change is good depends on the goal you state. A shorter session or a higher win probability is not automatically better.',
+        'When you check a comparison by simulation, the two scenarios use independent random streams; the difference then has its own interval, wider than either estimate alone.',
+      ] },
+      { kind: 'formula', text: 'change = alt − base  (pp for probabilities);   relative = (alt − base) / |base| × 100%', spoken: 'The change is alternative minus baseline, in percentage points for probabilities; the relative change divides by the absolute baseline.' },
+      { kind: 'model', snapshot: GAMBLE, caption: 'Baseline: each round 50% keep playing, 20% Ruin, 30% Rich.',
+        description: 'Playing returns to Playing with 0.5, goes to Ruin with 0.2 and Rich with 0.3. Ruin and Rich are absorbing.' },
+      { kind: 'mistake', text: 'Calling a change “an improvement” because a number went up. Pr(Ruin) going up is also “up”. State the goal first, then judge.' },
+      { kind: 'check', id: 'q1', question: 'Pr(Rich) changes from 0.60 to 0.66. How should you report the change?',
+        choices: ['+6 percentage points (+10% relative)', '+6% (relative)', '+0.06%'], correct: 0,
+        explanation: '0.66 − 0.60 = 0.06 = 6 percentage points. Relative to the baseline that is 0.06/0.60 = 10%.' },
+      { kind: 'try', text: 'Improve the Casino strategy under a fixed house rule.', challengeId: 'compare-strategies' },
+      { kind: 'try', text: 'Shorten the Doomscroll session — and question the goal.', challengeId: 'escape-trap' },
     ],
   },
 ];

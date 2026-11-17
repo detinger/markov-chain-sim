@@ -1,39 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CHALLENGE_BY_ID } from '../../data/challenges';
 import { LESSON_BY_ID } from '../../data/lessons';
+import { emptyProgress, migrateProgress, type LearningProgress } from './migrateProgress';
 
 const KEY = 'markov-simulator:progress:v1';
+const BACKUP_KEY = 'markov-simulator:progress:backup';
 
-export interface LearningProgress {
-  schemaVersion: 1;
-  lessons: Record<string, { version: number; completedAt?: string; checks: Record<string, { correct: boolean; attempts: number }> }>;
-  challenges: Record<string, { version: number; attempts: number; hintsUsed: number; passedAt?: string }>;
-  /** Entries dropped because their content version changed — shown once to the learner. */
-  resetNotes?: string[];
-}
+export type { LearningProgress };
 
-const empty = (): LearningProgress => ({ schemaVersion: 1, lessons: {}, challenges: {} });
+const lessonVersions = Object.fromEntries(Object.values(LESSON_BY_ID).map((l) => [l.id, {
+  title: l.title, version: l.version, progressCompatibleFrom: l.progressCompatibleFrom,
+  checkIds: l.sections.flatMap((x) => ('id' in x ? [x.id] : [])),
+}]));
+const challengeVersions = Object.fromEntries(Object.values(CHALLENGE_BY_ID).map((c) => [c.id, { title: c.title, version: c.version, progressCompatibleFrom: c.progressCompatibleFrom }]));
 
-/** Load progress, discarding entries whose content version no longer matches (with an explanation). */
+/** Load and migrate progress. Unreadable data is backed up before it can be overwritten. */
 function load(): LearningProgress {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return empty();
-    const p = JSON.parse(raw) as LearningProgress;
-    if (p.schemaVersion !== 1) return empty();
-    const notes: string[] = [];
-    for (const [id, e] of Object.entries(p.lessons ?? {})) {
-      const l = LESSON_BY_ID[id];
-      if (!l || l.version !== e.version) { delete p.lessons[id]; if (l) notes.push(`Lesson “${l.title}” was updated; its progress was reset.`); }
-    }
-    for (const [id, e] of Object.entries(p.challenges ?? {})) {
-      const c = CHALLENGE_BY_ID[id];
-      if (!c || c.version !== e.version) { delete p.challenges[id]; if (c) notes.push(`Challenge “${c.title}” was updated; its progress was reset.`); }
-    }
-    return { ...empty(), ...p, resetNotes: notes.length ? notes : undefined };
-  } catch {
-    return empty();
-  }
+  let raw: string | null = null;
+  try { raw = localStorage.getItem(KEY); } catch { return emptyProgress(); }
+  let parsed: unknown = null;
+  try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = '<invalid JSON>'; }
+  const r = migrateProgress(parsed, lessonVersions, challengeVersions);
+  if (r.status === 'unreadable' && raw) { try { localStorage.setItem(BACKUP_KEY, raw); } catch { /* ignore */ } }
+  return r.progress;
 }
 
 export function useProgress() {
@@ -66,7 +55,7 @@ export function useProgress() {
     } } };
   }), []);
 
-  const reset = useCallback(() => setProgress(empty()), []);
+  const reset = useCallback(() => setProgress(emptyProgress()), []);
   const dismissNotes = useCallback(() => setProgress((p) => ({ ...p, resetNotes: undefined })), []);
   const exportJson = useCallback(() => JSON.stringify({ format: 'markov-chain-simulator/learning-progress', ...progress, resetNotes: undefined }, null, 2), [progress]);
 

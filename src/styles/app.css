@@ -414,3 +414,19 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
   .compare-arrow { transform: rotate(90deg); justify-self: center; }
 }
 .analysis-grid > *, .compare-scenarios > * { min-width: 0; }
+
+/* ───────────── Interval bars (Phase 6) ───────────── */
+.ci-bar { position: relative; height: 16px; border-radius: 4px; background: var(--bg-sunken); }
+.ci-range { position: absolute; top: 5px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--chart-1) 45%, transparent); }
+.ci-point { position: absolute; top: 3px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--chart-1); }
+.ci-exact { position: absolute; top: 0; width: 2px; height: 16px; margin-left: -1px; background: var(--text); }
+.state-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.rubric { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 13px; }
+.rubric li { display: flex; gap: 6px; align-items: flex-start; }
+.rubric li svg { flex: none; margin-top: 2px; }
+.rubric .ok svg { color: var(--success); }
+.rubric .bad svg { color: var(--error); }
+.choice-group { border: 0; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; min-width: 0; }
+.choice-group legend { margin-bottom: 6px; }
+/* A floated legend sits inside the card instead of on its border. */
+.check > .check-legend { float: left; width: 100%; margin: 0 0 4px; }

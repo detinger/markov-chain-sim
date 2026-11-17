@@ -11,6 +11,7 @@ import MatrixEditor, { InitialDistributionEditor } from '../../components/Matrix
 import ValidationPanel from '../../components/ValidationPanel';
 import type { Selection } from '../../app/selection';
 import MiniChain, { SnapshotMatrix } from '../learning/MiniChain';
+import { RunTable } from '../learning/ExperimentRuns';
 import type { Progress } from '../learning/progress';
 
 interface Props {
@@ -36,7 +37,7 @@ export default function ChallengesPage({ challengeId, onSelect, onOpenLesson, pr
             </div>
           </header>
           <div className="card-grid">
-            {CHALLENGES.map((c) => {
+            {[...CHALLENGES].sort((a, b) => a.level - b.level).map((c) => {
               const p = progress.progress.challenges[c.id];
               return (
                 <button key={c.id} className="card linked-card challenge-card" onClick={() => onSelect(c.id)}>
@@ -92,7 +93,8 @@ function ChallengeView({ def, onBack, onOpenLesson, progress }: { def: Challenge
   };
   const reset = () => { setDoc(snapshotToDocument(def.starter)); setAnswers({}); setResult(null); setSelection(null); };
   const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
-  const numericAssertions = def.assertions.filter((a) => a.kind === 'numeric-answer');
+  const answerAssertions = def.assertions.filter((a) => a.kind === 'numeric-answer' || a.kind === 'choice-answer' || a.kind === 'state-set');
+  const setAnswer = (key: string, v: string) => { setAnswers((x) => ({ ...x, [key]: v })); setResult(null); };
 
   return (
     <div>
@@ -174,15 +176,50 @@ function ChallengeView({ def, onBack, onOpenLesson, progress }: { def: Challenge
               <h3>The model</h3>
               <MiniChain snapshot={def.starter} height={220} />
               <SnapshotMatrix snapshot={def.starter} caption="Read-only model for this challenge" />
+              {def.experiment && (
+                <div className="section" style={{ marginTop: 12 }}>
+                  <h4>Simulation results (fixed seeds)</h4>
+                  <RunTable snapshot={def.starter} horizon={def.experiment.horizon} state={def.experiment.state} runs={def.experiment.runs} />
+                </div>
+              )}
               <div className="section" style={{ marginTop: 16 }}>
                 <h4>Your answers</h4>
-                {numericAssertions.map((a) => a.kind === 'numeric-answer' && (
-                  <label key={a.key} className="field"><span className="field-label">{a.label}</span>
-                    <input className="input num" style={{ maxWidth: 220 }} value={answers[a.key] ?? ''} placeholder="e.g. 0.25, 25%, 1/4" inputMode="decimal"
-                      aria-invalid={(answers[a.key] ?? '') !== '' && parseAnswer(answers[a.key]) === null ? true : undefined}
-                      onChange={(e) => { setAnswers((x) => ({ ...x, [a.key]: e.target.value })); setResult(null); }} />
-                  </label>
-                ))}
+                {answerAssertions.map((a) => {
+                  if (a.kind === 'numeric-answer') return (
+                    <label key={a.key} className="field"><span className="field-label">{a.label}</span>
+                      <input className="input num" style={{ maxWidth: 220 }} value={answers[a.key] ?? ''} placeholder="e.g. 0.25, 25%, 1/4" inputMode="decimal"
+                        aria-invalid={(answers[a.key] ?? '') !== '' && parseAnswer(answers[a.key]) === null ? true : undefined}
+                        onChange={(e) => setAnswer(a.key, e.target.value)} />
+                    </label>
+                  );
+                  if (a.kind === 'choice-answer') return (
+                    <fieldset key={a.key} className="field choice-group">
+                      <legend className="field-label">{a.question}</legend>
+                      {a.choices.map((c, i) => (
+                        <label key={i} className="choice">
+                          <input type="radio" name={`${def.id}-${a.key}`} checked={answers[a.key] === String(i)} onChange={() => setAnswer(a.key, String(i))} /> {c}
+                        </label>
+                      ))}
+                    </fieldset>
+                  );
+                  if (a.kind === 'state-set') {
+                    const chosen = (answers[a.key] ?? '').split(',').filter(Boolean);
+                    return (
+                      <fieldset key={a.key} className="field">
+                        <legend className="field-label">{a.label} — tick every state that belongs</legend>
+                        <div className="state-pick">
+                          {def.starter.states.map((st) => (
+                            <label key={st.id} className={`filter-chip${chosen.includes(st.id) ? ' selected' : ''}`}>
+                              <input type="checkbox" checked={chosen.includes(st.id)} onChange={(e) => setAnswer(a.key, (e.target.checked ? [...chosen, st.id] : chosen.filter((x) => x !== st.id)).join(','))} />
+                              {st.label}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    );
+                  }
+                  return null;
+                })}
               </div>
             </section>
           )}
@@ -226,6 +263,11 @@ function FeedbackPanel({ result, rubric }: { result: AssessmentResult; rubric: s
           <ul>{result.needsAttention.map((n) => <li key={n.message}><strong>{n.message}</strong> {n.why}</li>)}</ul>
         </div>
       )}
+      <div className="feedback-part"><h4>Rubric</h4>
+        <ul className="rubric">{result.results.map((r) => (
+          <li key={r.criterion} className={r.passed ? 'ok' : 'bad'}>{r.passed ? <CheckCircle2 size={14} aria-hidden /> : <XCircle size={14} aria-hidden />}<span>{r.criterion}<span className="visually-hidden">{r.passed ? ': met' : ': not yet met'}</span></span></li>
+        ))}</ul>
+      </div>
       <div className="feedback-part"><h4>Next</h4><p style={{ margin: 0 }}>{result.next}</p></div>
     </div>
   );

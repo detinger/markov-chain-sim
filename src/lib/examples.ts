@@ -130,6 +130,65 @@ export const EXAMPLES: Record<string, { name: string, nodes: LegacyNode[], edges
   }
 };
 
+// Small teaching examples (PLAN.md §6, Phase 6). Same shape as the originals; the originals above stay untouched.
+export const TEACHING_EXAMPLES: typeof EXAMPLES = {
+  alternator: {
+    name: 'Deterministic alternator',
+    nodes: [{ id: 'a', name: 'A', x: 100, y: 150 }, { id: 'b', name: 'B', x: 400, y: 150 }],
+    edges: [{ id: 'ab', source: 'a', target: 'b', probability: 1 }, { id: 'ba', source: 'b', target: 'a', probability: 1 }],
+  },
+  twoOutcomes: {
+    name: 'Two absorbing outcomes',
+    nodes: [{ id: 'play', name: 'Playing', x: 250, y: 80 }, { id: 'win', name: 'Win', x: 450, y: 280 }, { id: 'lose', name: 'Lose', x: 50, y: 280 }],
+    edges: [
+      { id: 'pp', source: 'play', target: 'play', probability: 0.5 },
+      { id: 'pw', source: 'play', target: 'win', probability: 0.3 },
+      { id: 'pl', source: 'play', target: 'lose', probability: 0.2 },
+      { id: 'ww', source: 'win', target: 'win', probability: 1 },
+      { id: 'll', source: 'lose', target: 'lose', probability: 1 },
+    ],
+  },
+  reducible: {
+    name: 'Reducible classes',
+    nodes: [{ id: 'a', name: 'A', x: 50, y: 150 }, { id: 'b', name: 'B', x: 250, y: 50 }, { id: 'c', name: 'C', x: 450, y: 150 }, { id: 'd', name: 'D', x: 250, y: 300 }],
+    edges: [
+      { id: 'aa', source: 'a', target: 'a', probability: 0.5 },
+      { id: 'ab', source: 'a', target: 'b', probability: 0.5 },
+      { id: 'bc', source: 'b', target: 'c', probability: 1 },
+      { id: 'cb', source: 'c', target: 'b', probability: 1 },
+      { id: 'dd', source: 'd', target: 'd', probability: 1 },
+    ],
+  },
+  stickyRare: {
+    name: 'Sticky state, rare exit',
+    nodes: [{ id: 'stuck', name: 'Stuck', x: 100, y: 150 }, { id: 'free', name: 'Free', x: 400, y: 150 }],
+    edges: [
+      { id: 'ss', source: 'stuck', target: 'stuck', probability: 0.99 },
+      { id: 'sf', source: 'stuck', target: 'free', probability: 0.01 },
+      { id: 'ff', source: 'free', target: 'free', probability: 1 },
+    ],
+  },
+  unreachableTarget: {
+    name: 'Unreachable target',
+    nodes: [{ id: 'home', name: 'Home', x: 80, y: 150 }, { id: 'park', name: 'Park', x: 320, y: 150 }, { id: 'island', name: 'Island', x: 560, y: 150 }],
+    edges: [
+      { id: 'hh', source: 'home', target: 'home', probability: 0.4 },
+      { id: 'hp', source: 'home', target: 'park', probability: 0.6 },
+      { id: 'ph', source: 'park', target: 'home', probability: 0.7 },
+      { id: 'pp', source: 'park', target: 'park', probability: 0.3 },
+      { id: 'ii', source: 'island', target: 'island', probability: 1 },
+    ],
+  },
+  oneState: {
+    name: 'One-state chain',
+    nodes: [{ id: 'only', name: 'Only state', x: 200, y: 150 }],
+    edges: [{ id: 'oo', source: 'only', target: 'only', probability: 1 }],
+  },
+};
+
+/** Every example the app can open: originals first, then the small teaching examples. */
+export const ALL_EXAMPLES: typeof EXAMPLES = { ...EXAMPLES, ...TEACHING_EXAMPLES };
+
 export interface ExampleMeta {
   subtitle?: string;
   description: string;
@@ -140,6 +199,10 @@ export interface ExampleMeta {
   /** Starting state for μ₀. Defaults to the first state (the pre-upgrade chart behavior). */
   start?: string;
   assumptions: string[];
+  /** What the example is meant to teach. */
+  goals?: string[];
+  /** Original data from the pre-upgrade app, or a small teaching example added in Phase 6. */
+  group?: 'original' | 'teaching';
 }
 
 export const EXAMPLE_META: Record<string, ExampleMeta> = {
@@ -171,9 +234,11 @@ export const EXAMPLE_META: Record<string, ExampleMeta> = {
     difficulty: 'Intro',
     assumptions: [
       'Models a single individual, not population counts.',
-      'Infection probability is fixed; a real SIR epidemic depends on how many people are currently infected.',
+      'Infection probability is fixed; a real SIR epidemic depends on how many people are currently infected, so this chain cannot show an outbreak peaking and fading.',
+      'Waiting times are geometric (memoryless): on average 20 days until infection and 5 days infected.',
       'Recovered is absorbing (permanent immunity).',
     ],
+    goals: ['Absorption and expected time to absorption', 'Recognizing what a fixed-rate chain leaves out'],
   },
   gambler: {
     lesson: 'absorption.outcomes',
@@ -182,20 +247,65 @@ export const EXAMPLE_META: Record<string, ExampleMeta> = {
     difficulty: 'Intermediate',
     // The first listed state is the absorbing "Broke & Busted"; starting there makes every chart flat.
     start: '2',
-    assumptions: ['Educational probabilities, not real gambling odds or advice.'],
+    assumptions: [
+      'Educational probabilities, not real gambling odds or advice. Real casino games are designed so that players lose on average.',
+      'States are situations, not amounts of money; there is no bankroll in the model.',
+    ],
+    goals: ['Two absorbing outcomes: ruin versus riches', 'Comparing strategies on exact absorption probabilities'],
   },
   socialMedia: {
     lesson: 'absorption.first-passage',
     description: 'Seven engagement states; closing the app is the only absorbing exit.',
     stepLabel: 'minute',
     difficulty: 'Advanced',
-    assumptions: ['Illustrative assumptions, not empirical psychology.'],
+    assumptions: [
+      'Invented probabilities for teaching, not measured from real users.',
+      '“Getting Triggered” and “Rage Quit” are story labels, not psychological diagnoses.',
+      'One step is a fixed slice of time; closing the app ends this model (returning later is not modeled).',
+    ],
+    goals: ['Expected time to reach an absorbing exit', 'How one edit changes a hitting time — and whether the metric is the right goal'],
+  },
+  alternator: {
+    group: 'teaching', lesson: 'longrun.stationary', difficulty: 'Intro',
+    description: 'A always goes to B and B always goes to A.',
+    goals: ['Period 2: π = [0.5, 0.5] is stationary but μₜ from A never converges'],
+    assumptions: ['Deterministic transitions are still a valid Markov chain.'],
+  },
+  twoOutcomes: {
+    group: 'teaching', lesson: 'absorption.outcomes', difficulty: 'Intro', stepLabel: 'round',
+    description: 'Each round: keep playing (0.5), Win (0.3) or Lose (0.2).',
+    goals: ['Pr(Win) = 0.3 / 0.5 = 0.6 and 2 expected rounds, by hand'],
+    assumptions: ['Win and Lose are absorbing.'],
+  },
+  reducible: {
+    group: 'teaching', lesson: 'longrun.classes', difficulty: 'Intermediate',
+    description: 'A transient state, a closed periodic pair, and a closed state that the start never reaches.',
+    goals: ['Communicating classes, closed versus transient, and an unreachable class'],
+    assumptions: ['D is valid even though it is never visited from A.'],
+  },
+  stickyRare: {
+    group: 'teaching', lesson: 'experiments.censoring', difficulty: 'Intermediate',
+    description: 'Leaving “Stuck” has probability 0.01 per step, so the expected wait is 100 steps.',
+    goals: ['Rare transitions mean long expected times', 'Short simulation horizons censor most paths'],
+    assumptions: ['Free is absorbing.'],
+  },
+  unreachableTarget: {
+    group: 'teaching', lesson: 'absorption.first-passage', difficulty: 'Intermediate',
+    description: 'Home and Park visit each other; Island is never reached from them.',
+    goals: ['Hitting probability 0 and an infinite expected hitting time for Island'],
+    assumptions: ['An unreachable state is allowed; it is not a modeling error.'],
+  },
+  oneState: {
+    group: 'teaching', lesson: 'foundations.rows', difficulty: 'Intro',
+    description: 'The smallest valid chain: one state that always stays.',
+    goals: ['A row with a single entry of 1; π = [1]'],
+    assumptions: ['Trivial, but a useful edge case.'],
   },
 };
 
 /** Convert an original example into a canonical document (data unchanged; μ₀ is a point mass at the start state). */
 export function exampleToDocument(key: string): ChainDocumentV1 {
-  const ex = EXAMPLES[key];
+  const ex = ALL_EXAMPLES[key];
   const meta = EXAMPLE_META[key];
   const doc = createEmptyDocument(ex.name);
   const ids = ex.nodes.map((n) => n.id);

@@ -7,6 +7,7 @@ import { CHALLENGE_BY_ID } from '../../data/challenges';
 import { LESSONS, LESSON_BY_ID, LEVELS, type Lesson, type LessonSection } from '../../data/lessons';
 import SequenceCalculator from '../../components/SequenceCalculator';
 import MiniChain, { SnapshotMatrix } from './MiniChain';
+import { ExperimentDemo } from './ExperimentRuns';
 import type { Progress } from './progress';
 
 interface Props {
@@ -142,6 +143,8 @@ function Section({ section: s, lesson, progress, onOpenChallenge, onOpenInModele
       return <EvolveDemo snapshot={s.snapshot} caption={s.caption} maxT={s.maxT} />;
     case 'demo-path':
       return <PathDemo snapshot={s.snapshot} caption={s.caption} />;
+    case 'demo-experiment':
+      return <ExperimentDemo snapshot={s.snapshot} caption={s.caption} horizon={s.horizon} state={s.state} seed={s.seed} target={s.target} />;
     case 'mistake':
       return <div className="callout callout-warning lesson-section"><AlertTriangle /><p><strong>Common mistake.</strong> {s.text}</p></div>;
     case 'check':

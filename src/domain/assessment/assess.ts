@@ -1,9 +1,10 @@
-import { absorptionAnalysis, evolveDistribution, firstArrivalByHorizon, hittingAnalysis, pathProbability } from '../markov/analysis';
+import { absorptionAnalysis, evolveDistribution, firstArrivalByHorizon, hittingAnalysis, pathProbability, stationaryDistributions } from '../markov/analysis';
+import { classifyChain } from '../markov/structure';
 import { compileChain, initialVector, rowOf } from '../markov/compile';
 import { createEmptyDocument } from '../markov/document';
 import { compensatedSum, EPS_ROW, formatProbability, formatTotal } from '../markov/numeric';
 import type { ChainDocumentV1, StateId } from '../markov/types';
-import type { AssessmentResult, Assertion, AssertionResult, ChallengeDefinition, ModelMetric, ModelSnapshot, NumericTarget, Submission } from './types';
+import type { AssessmentResult, Assertion, AssertionResult, ChallengeDefinition, ModelMetric, ModelSnapshot, NumericTarget, StateSetTarget, Submission } from './types';
 
 export function snapshotToDocument(s: ModelSnapshot): ChainDocumentV1 {
   const base = createEmptyDocument(s.title);
@@ -29,17 +30,106 @@ export function documentToSnapshot(d: ChainDocumentV1): ModelSnapshot {
   };
 }
 
-/** Exact value of a numeric target on a snapshot (null if the model is invalid). */
+/** Exact value of a numeric target on a snapshot (null if the model is invalid or the quantity is undefined). */
 export function evaluateTarget(snapshot: ModelSnapshot, target: NumericTarget): number | null {
   const c = compileChain(snapshotToDocument(snapshot));
   if (c.status !== 'ok') return null;
-  if (target.type === 'path') {
-    const r = pathProbability(c.result, target.path, target.mode);
-    return r.status === 'ok' ? r.result.probability : null;
+  const chain = c.result;
+  const idx = (id: StateId) => chain.stateIds.indexOf(id);
+  switch (target.type) {
+    case 'path': {
+      const r = pathProbability(chain, target.path, target.mode);
+      return r.status === 'ok' ? r.result.probability : null;
+    }
+    case 'distribution': {
+      const e = evolveDistribution(chain, target.t);
+      const i = idx(target.state);
+      return e.status === 'ok' && i >= 0 ? e.result[target.t][i] : null;
+    }
+    case 'stationary': {
+      const st = stationaryDistributions(chain);
+      const i = idx(target.state);
+      return st.status === 'ok' && st.result.unique && i >= 0 ? st.result.extremal[0].pi[i] : null;
+    }
+    case 'absorb':
+    case 'expected-steps': {
+      const ab = absorptionAnalysis(chain);
+      if (ab.status !== 'ok') return null;
+      const k = ab.result.transient.indexOf(idx(target.from));
+      if (target.type === 'expected-steps') return k < 0 ? 0 : ab.result.t[k];
+      const col = ab.result.absorbing.indexOf(idx(target.into));
+      if (col < 0) return null;
+      return k < 0 ? (target.from === target.into ? 1 : 0) : ab.result.B[k][col];
+    }
+    case 'hit-by':
+      return firstArrivalByHorizon(chain, target.targets, target.t)[target.t];
   }
-  const e = evolveDistribution(c.result, target.t);
-  const i = c.result.stateIds.indexOf(target.state);
-  return e.status === 'ok' && i >= 0 ? e.result[target.t][i] : null;
+}
+
+/** Exact structural set (state IDs) used by state-set questions. */
+export function evaluateStateSet(snapshot: ModelSnapshot, target: StateSetTarget): StateId[] | null {
+  const c = compileChain(snapshotToDocument(snapshot));
+  if (c.status !== 'ok') return null;
+  const st = classifyChain(c.result);
+  if (st.status !== 'ok') return null;
+  const s = st.result;
+  const idx = target === 'absorbing' ? s.absorbing
+    : target === 'transient' ? s.transient
+    : s.classes.filter((k) => k.closed).flatMap((k) => k.states);
+  return c.result.stateIds.filter((_, i) => idx.includes(i));
+}
+
+/**
+ * Values a learner typically produces through a specific misconception, with an explanation.
+ * Used only to explain a wrong answer — never to award credit.
+ */
+export function diagnoseNumeric(snapshot: ModelSnapshot, target: NumericTarget): { value: number; why: string }[] {
+  const out: { value: number; why: string }[] = [];
+  const add = (v: number | null, why: string) => { if (v !== null && Number.isFinite(v)) out.push({ value: v, why }); };
+  const transposed: ModelSnapshot = { ...snapshot, P: snapshot.P.map((_, i) => snapshot.P.map((row) => row[i])) };
+  const pi = (id: StateId) => snapshot.states.findIndex((x) => x.id === id);
+  switch (target.type) {
+    case 'path':
+      add(evaluateTarget(snapshot, { ...target, mode: target.mode === 'joint' ? 'conditional' : 'joint' }),
+        target.mode === 'joint' ? 'This is the probability given the start. The joint probability also multiplies by μ₀ of the first state.' : 'This includes μ₀ of the first state. Given the start, multiply the transitions only.');
+      break;
+    case 'distribution': {
+      if (target.t >= 2) {
+        // The single most likely path into the state: a common “one path is the answer” slip.
+        const e = evaluateTarget(snapshot, target);
+        let best = 0;
+        const start = snapshot.mu0.findIndex((p) => p === 1);
+        if (start >= 0 && target.t === 2) {
+          const j = pi(target.state);
+          for (let k = 0; k < snapshot.P.length; k++) best = Math.max(best, snapshot.P[start][k] * snapshot.P[k][j]);
+          if (e !== null && best !== e) add(best, 'That is the probability of one path. μₜ(j) adds every path that ends in j at step t.');
+        }
+      }
+      add(evaluateTarget(transposed, target), 'That reads the matrix by columns. Probabilities out of a state are in its row (From → To).');
+      break;
+    }
+    case 'absorb': {
+      const i = pi(target.from); const j = pi(target.into);
+      if (i >= 0 && j >= 0) add(snapshot.P[i][j], 'That is only the one-step probability. Paths that wander through other transient states first also end there — solve (I − Q)B = R.');
+      break;
+    }
+    case 'expected-steps': {
+      const i = pi(target.from);
+      if (i >= 0) add(1 / (1 - snapshot.P[i][i]), 'That is the expected time to leave the starting state, not to be absorbed. Count the visits to every transient state: t = (I − Q)⁻¹1.');
+      break;
+    }
+    case 'hit-by': {
+      const e = evaluateTarget(snapshot, { type: 'distribution', t: target.t, state: target.targets[0] });
+      if (target.targets.length === 1) add(e, `That is μ${target.t === 2 ? '₂' : 'ₜ'}(target): the probability of being there at step ${target.t}. Arriving by step ${target.t} also counts paths that arrived earlier and left again.`);
+      break;
+    }
+    case 'stationary': {
+      const e = evaluateTarget(snapshot, { type: 'distribution', t: 1, state: target.state });
+      add(e, 'That is μ₁, one step from the start. π solves πP = π; it does not depend on the start.');
+      break;
+    }
+  }
+  return out;
 }
 
 /** Exact value of a comparison metric from μ₀; Infinity is returned only for a genuinely infinite expectation. */
@@ -84,7 +174,7 @@ export function parseAnswer(text: string): number | null {
   return /^[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?$/.test(t) ? Number(t) : null;
 }
 
-function check(def: ChallengeDefinition, a: Assertion, sub: Submission): AssertionResult & { why: string } {
+function check(def: ChallengeDefinition, a: Assertion, sub: Submission): Omit<AssertionResult, 'criterion'> & { why: string } {
   const s = sub.snapshot;
   const ids = s.states.map((x) => x.id);
   const label = (id: StateId) => s.states.find((x) => x.id === id)?.label || 'Unnamed';
@@ -165,18 +255,62 @@ function check(def: ChallengeDefinition, a: Assertion, sub: Submission): Asserti
       const given = parseAnswer(sub.answers[a.key] ?? '');
       if (exact === null) return { passed: false, message: 'This question’s model is invalid.', why: 'Contact your instructor.' };
       if (given === null) return { passed: false, message: `${a.label}: enter a number (e.g. 0.12, 12%, or 3/25).`, why: 'Answers are checked numerically.' };
-      return Math.abs(given - exact) <= a.tolerance
-        ? { passed: true, message: `${a.label}: ${formatProbability(given, 6)} is correct.`, why: '' }
-        : { passed: false, message: `${a.label}: ${formatProbability(given, 6)} is not correct.`, why: a.target.type === 'path'
-          ? (a.target.mode === 'joint' ? 'A joint path probability multiplies the starting probability μ₀(first state) by one transition probability per step.' : 'Given the starting state, multiply one transition probability for each step — do not include μ₀.')
-          : 'μₜ(j) adds up the probabilities of every path that ends in j at step t, not just one path.' };
+      if (Math.abs(given - exact) <= a.tolerance) return { passed: true, message: `${a.label}: ${formatProbability(given, 6)} is correct.`, why: '' };
+      const known = diagnoseNumeric(def.starter, a.target).find((d) => Math.abs(d.value - given) <= Math.max(a.tolerance, 1e-9) && Math.abs(d.value - exact) > a.tolerance);
+      return { passed: false, message: `${a.label}: ${formatProbability(given, 6)} is not correct.`, why: known?.why ?? GENERIC_WHY[a.target.type](a.target) };
     }
+    case 'choice-answer': {
+      const raw = sub.answers[a.key];
+      const pick = raw === undefined || raw === '' ? -1 : Number(raw);
+      if (!(pick >= 0 && pick < a.choices.length)) return { passed: false, message: `${a.label}: choose an answer.`, why: 'Each question needs one selected option before it can be checked.' };
+      return pick === a.correct
+        ? { passed: true, message: `${a.label}: “${a.choices[pick]}” is correct. ${a.explanations[pick] ?? ''}`.trim(), why: '' }
+        : { passed: false, message: `${a.label}: “${a.choices[pick]}” is not correct.`, why: a.explanations[pick] ?? '' };
+    }
+    case 'state-set': {
+      const exact = evaluateStateSet(def.starter, a.target);
+      if (!exact) return { passed: false, message: 'This question’s model is invalid.', why: 'Contact your instructor.' };
+      const chosen = (sub.answers[a.key] ?? '').split(',').filter(Boolean);
+      const lab = (id: StateId) => def.starter.states.find((x) => x.id === id)?.label ?? id;
+      const missing = exact.filter((id) => !chosen.includes(id));
+      const extra = chosen.filter((id) => !exact.includes(id));
+      if (!missing.length && !extra.length) return { passed: true, message: `${a.label}: {${exact.map(lab).join(', ')}} is correct.`, why: '' };
+      const parts = [extra.length ? `${extra.map(lab).join(', ')} should not be included` : '', missing.length ? `${missing.length} state${missing.length > 1 ? 's are' : ' is'} missing` : ''].filter(Boolean);
+      return { passed: false, message: `${a.label}: ${parts.join('; ')}.`, why: a.why };
+    }
+  }
+}
+
+const GENERIC_WHY: Record<NumericTarget['type'], (t: NumericTarget) => string> = {
+  path: (t) => (t.type === 'path' && t.mode === 'joint' ? 'A joint path probability multiplies the starting probability μ₀(first state) by one transition probability per step.' : 'Given the starting state, multiply one transition probability for each step — do not include μ₀.'),
+  distribution: () => 'μₜ(j) adds up the probabilities of every path that ends in j at step t, not just one path.',
+  stationary: () => 'Solve πP = π together with Σπ = 1. For two states, balance the flows: π(A)·P(A→B) = π(B)·P(B→A).',
+  absorb: () => 'Write one equation per transient state: hᵢ = Σⱼ Pᵢⱼ hⱼ with h = 1 in the target outcome and 0 in the other absorbing states.',
+  'expected-steps': () => 'Write one equation per transient state: tᵢ = 1 + Σⱼ Pᵢⱼ tⱼ over transient j (absorbing states contribute 0).',
+  'hit-by': () => 'Add the probability of first arriving at step 0, 1, …, t. Once a path has arrived, it counts even if it leaves again.',
+};
+
+/** Rubric criterion each assertion checks — the checklist learners see. */
+export function criterionOf(a: Assertion, def?: ChallengeDefinition): string {
+  const n = (r: string) => (def?.roles?.includes(r) ? r : def?.starter.states.find((x) => x.id === r)?.label ?? r);
+  switch (a.kind) {
+    case 'rows-valid': return 'Every row is a probability distribution';
+    case 'initial-valid': return 'The starting distribution totals 1';
+    case 'state-count': return `The model has ${a.equals} states`;
+    case 'transition': return `P(${n(a.from)} → ${n(a.to)}) matches the scenario`;
+    case 'transition-positive': return `${n(a.from)} → ${n(a.to)} stays possible`;
+    case 'numeric-answer': return a.label;
+    case 'choice-answer': return a.label;
+    case 'state-set': return a.label;
+    case 'rows-locked': return 'Only permitted rows changed';
+    case 'transition-range': return 'Scenario constraint respected';
+    case 'metric': return `${a.metric.label} meets the goal`;
   }
 }
 
 /** Deterministic grading from exact model calculations (no randomness, no canvas coordinates). */
 export function assessChallenge(def: ChallengeDefinition, sub: Submission): AssessmentResult {
-  const checked = def.assertions.map((a) => check(def, a, sub));
+  const checked = def.assertions.map((a) => ({ ...check(def, a, sub), criterion: criterionOf(a, def) }));
   const passed = checked.every((r) => r.passed);
   return {
     challengeId: def.id,
@@ -185,7 +319,7 @@ export function assessChallenge(def: ChallengeDefinition, sub: Submission): Asse
     correct: checked.filter((r) => r.passed).map((r) => r.message),
     needsAttention: checked.filter((r) => !r.passed).map((r) => ({ message: r.message, why: r.why })),
     next: passed ? def.nextConcept : 'Use the next hint if you are stuck — hints never cost you the challenge.',
-    results: checked.map(({ passed: p, message }) => ({ passed: p, message })),
+    results: checked.map(({ passed: p, message, criterion }) => ({ passed: p, message, criterion })),
   };
 }
 

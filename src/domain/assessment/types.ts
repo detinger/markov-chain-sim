@@ -13,7 +13,18 @@ export interface ModelSnapshot {
 /** A quantity the learner must compute; the expected value is always derived from the model, never typed in. */
 export type NumericTarget =
   | { type: 'path'; path: StateId[]; mode: 'joint' | 'conditional' }
-  | { type: 'distribution'; t: number; state: StateId };
+  | { type: 'distribution'; t: number; state: StateId }
+  /** π(state) of the unique stationary distribution. */
+  | { type: 'stationary'; state: StateId }
+  /** Pr(eventually absorbed in `into` | X₀ = from). */
+  | { type: 'absorb'; from: StateId; into: StateId }
+  /** Expected steps to absorption from `from`. */
+  | { type: 'expected-steps'; from: StateId }
+  /** Pr(T_A ≤ t) from μ₀ (first arrival, not occupancy). */
+  | { type: 'hit-by'; targets: StateId[]; t: number };
+
+/** Structural sets the learner identifies by ticking states. */
+export type StateSetTarget = 'closed' | 'transient' | 'absorbing';
 
 export type Assertion =
   | { kind: 'rows-valid' }
@@ -24,6 +35,10 @@ export type Assertion =
   /** Keep a transition positive (prevents trivial "make everything absorbing" repairs). */
   | { kind: 'transition-positive'; from: string; to: string; why: string }
   | { kind: 'numeric-answer'; key: string; label: string; target: NumericTarget; tolerance: number }
+  /** Multiple choice; `explanations[i]` says why choice i is right or wrong (shown after checking). */
+  | { kind: 'choice-answer'; key: string; label: string; question: string; choices: string[]; correct: number; explanations: string[] }
+  /** The learner ticks the states that form a structural set, computed from the model. */
+  | { kind: 'state-set'; key: string; label: string; target: StateSetTarget; why: string }
   /** Rows listed in the challenge's `lockedRows` must equal the starter exactly. */
   | { kind: 'rows-locked' }
   /** min ≤ P[from][to] ≤ max — a scenario constraint on an editable row. */
@@ -40,6 +55,8 @@ export type ModelMetric =
 export interface ChallengeDefinition {
   id: string;
   version: number;
+  /** Oldest version whose saved progress stays valid (e.g. only wording changed). */
+  progressCompatibleFrom?: number;
   title: string;
   level: number;
   prerequisites: string[];
@@ -57,7 +74,9 @@ export interface ChallengeDefinition {
   hints: string[];
   rubric: string;
   /** A correct solution; tests assert it passes and the starter fails. */
-  reference: { snapshot?: ModelSnapshot; roleMap?: Record<string, StateId>; answers?: Record<string, number> };
+  reference: { snapshot?: ModelSnapshot; roleMap?: Record<string, StateId>; answers?: Record<string, number | string> };
+  /** Optional fixed, seeded Monte Carlo runs shown with the model (deterministic: same seeds, same numbers). */
+  experiment?: { horizon: number; state: StateId; runs: { label: string; replications: number; seed: number }[] };
   nextConcept: string;
 }
 
@@ -69,6 +88,8 @@ export interface Submission {
 
 export interface AssertionResult {
   passed: boolean;
+  /** Short rubric criterion this assertion checks (shown as a checklist). */
+  criterion: string;
   message: string;
 }
 

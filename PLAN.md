@@ -514,7 +514,7 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phase 1. **Owner:** educational experience with numerical review.
 
-> Progress (2026-11-17): see ADR 0004. 9 lessons (levels 1–4), 4 challenges, 12 tests for fixtures/grading. Exit-gate walkthrough (complete a two-state lesson, solve the row-repair challenge via the UI) verified with scripted headless Chrome; no novice user study yet. The Theory quick reference remains a dialog; the lesson index serves as the theory index.
+> Progress (2026-11-17): see ADR 0004 (extended in ADR 0006). 9 lessons (levels 1–4), 4 challenges, 12 tests for fixtures/grading. Exit-gate walkthrough (complete a two-state lesson, solve the row-repair challenge via the UI) verified with scripted headless Chrome; no novice user study yet. The Theory quick reference remains a dialog; the lesson index serves as the theory index.
 
 - [x] Deliver levels 1–2, theory index, contextual state/transition explanations, and annotated examples.
 - [x] Implement issue navigation, explicit repairs, validation severity layers, and lesson links.
@@ -567,10 +567,12 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phases 2, 4, and 5.
 
-- [ ] Complete levels 1–5 and all twelve challenge types/instances in §5.
-- [ ] Add explainable rubric feedback, progress migration, advanced examples, and model-permutation tests.
-- [ ] Review SIR, social-media, and gambling framing for accurate model assumptions.
-- [ ] Conduct novice walkthroughs and keyboard/screen-reader review.
+- [x] Complete levels 1–5 and all twelve challenge types/instances in §5.
+- [x] Add explainable rubric feedback, progress migration, advanced examples, and model-permutation tests.
+- [x] Review SIR, social-media, and gambling framing for accurate model assumptions.
+- [ ] Conduct novice walkthroughs and keyboard/screen-reader review. *(Scripted keyboard and labeling audit done; novice sessions and a real screen-reader pass still needed.)*
+
+> Progress (2026-11-17): see ADR 0006. 12 lessons (levels 1–5), 12 challenges, misconception-aware feedback with a rubric checklist, pure progress migration with backup of unreadable data, six teaching examples, framing review. 23 new Vitest tests (119 total): choice keys verified against analysis, permutation invariance over every example, role-mapped grading, migration cases, example fixtures. Scripted headless-Chrome audit: no unnamed controls, duplicate IDs, or positive tabindex; real Tab walk shows a focus ring at every stop; fixed duplicated nav names, a missing Modeler heading, and a legend overlapping its card.
 
 **Exit gate:** all teaching fixtures and grading rules are versioned/tested; alternative correct models are accepted; users can understand why an answer fails; no AI tutor or generated model is required.
 

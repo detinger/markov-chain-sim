@@ -202,15 +202,15 @@ export default function App() {
             ['compare', 'Compare', <GitCompare key="i" />],
           ] as const).map(([id, text, icon]) => (
             <button key={id} className="nav-link" aria-current={page === id ? 'page' : undefined} title={text} onClick={() => setPage(id)}>
-              {icon}<span className="nav-text">{text}</span><span className="visually-hidden">{text}</span>
+              {icon}<span className="nav-text">{text}</span>
               {id === 'experiments' && (experiment.status === 'running' || experiment.status === 'cancelling') && <span className="badge badge-accent nav-text">Running</span>}
             </button>
           ))}
           <div className="nav-group">Learn</div>
-          <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span><span className="visually-hidden">Lessons</span></button>
-          <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span><span className="visually-hidden">Challenges</span></button>
-          <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span><span className="visually-hidden">Examples</span></button>
-          <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span><span className="visually-hidden">Theory</span></button>
+          <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span></button>
+          <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span></button>
+          <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span></button>
+          <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span></button>
           <div className="nav-spacer" />
           <div className="nav-theme">
             <div className="segmented" role="group" aria-label="Theme">
@@ -271,7 +271,8 @@ export default function App() {
             </div>
           </header>
 
-          <main id="main" className="workspace" tabIndex={-1}>
+          <main id="main" className="workspace" tabIndex={-1} aria-labelledby="modeler-h">
+            <h1 id="modeler-h" className="visually-hidden">Modeler: {doc.title || 'Untitled model'}</h1>
             <div className="canvas-column">
               <div className="canvas">
                 {doc.stateOrder.length > 0 && (
