@@ -36,6 +36,10 @@ import { snapshotToDocument } from './domain/assessment';
 
 type InspectorTab = 'matrix' | 'state' | 'validate' | 'sequence' | 'explain';
 const INSPECTOR_KEY = 'markov-simulator:inspector';
+const LOWER_KEY = 'markov-simulator:lower-height';
+const LOWER_MIN = 140;
+/** Space the canvas always keeps above the bottom panel (status strip + a usable canvas). */
+const CANVAS_RESERVE = 200;
 type Pending = { kind: 'replace'; title: string; next: () => ChainDocumentV1 } | { kind: 'delete'; id: StateId } | null;
 
 function download(name: string, text: string) {
@@ -83,6 +87,49 @@ export default function App() {
   }, [openLesson]);
   const reducedMotion = usePrefersReducedMotion();
   const [lowerOpen, setLowerOpen] = useState(true);
+  // Bottom panel height in px (null = natural height). Dragging the top edge sets it; double-click resets.
+  const [lowerHeight, setLowerHeight] = useState<number | null>(() => {
+    try { const v = Number(localStorage.getItem(LOWER_KEY)); return v >= LOWER_MIN ? v : null; } catch { return null; }
+  });
+  useEffect(() => {
+    try { if (lowerHeight === null) localStorage.removeItem(LOWER_KEY); else localStorage.setItem(LOWER_KEY, String(lowerHeight)); } catch { /* ignore */ }
+  }, [lowerHeight]);
+  const columnRef = useRef<HTMLDivElement>(null);
+  const lowerRef = useRef<HTMLElement>(null);
+  const lowerMax = () => Math.max(LOWER_MIN, (columnRef.current?.getBoundingClientRect().height ?? window.innerHeight) - CANVAS_RESERVE);
+  const clampLower = (h: number) => Math.round(Math.min(Math.max(h, LOWER_MIN), lowerMax()));
+  const startLowerResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startH = lowerRef.current?.getBoundingClientRect().height ?? LOWER_MIN;
+    document.body.classList.add('resizing-rows');
+    const move = (ev: PointerEvent) => setLowerHeight(clampLower(startH + (startY - ev.clientY)));
+    const up = () => {
+      document.body.classList.remove('resizing-rows');
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  const onLowerResizeKey = (e: React.KeyboardEvent) => {
+    const current = lowerRef.current?.getBoundingClientRect().height ?? LOWER_MIN;
+    const step = e.shiftKey ? 64 : 16;
+    let next: number | null | undefined;
+    if (e.key === 'ArrowUp') next = clampLower(current + step);
+    else if (e.key === 'ArrowDown') next = clampLower(current - step);
+    else if (e.key === 'Home') next = LOWER_MIN;
+    else if (e.key === 'End') next = lowerMax();
+    else if (e.key === 'Enter' || e.key === 'Escape') next = null;
+    if (next === undefined) return;
+    e.preventDefault();
+    setLowerHeight(next === null ? null : clampLower(next));
+  };
   const [lowerMode, setLowerMode] = useState<'exact' | 'sample'>('exact');
   const cellRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const fileInput = useRef<HTMLInputElement>(null);
@@ -299,7 +346,7 @@ export default function App() {
 
           <main id="main" className={`workspace${inspectorOpen ? '' : ' inspector-hidden'}`} tabIndex={-1} aria-labelledby="modeler-h">
             <h1 id="modeler-h" className="visually-hidden">Modeler: {doc.title || 'Untitled model'}</h1>
-            <div className="canvas-column">
+            <div className="canvas-column" ref={columnRef}>
               <div className="canvas">
                 {doc.stateOrder.length > 0 && (
                   <div className="canvas-hint" aria-hidden>Drag a state’s center to another state to connect · drag its edge to move · double-click to rename</div>
@@ -341,7 +388,15 @@ export default function App() {
                 {lowerMode === 'sample' && sim.current && <span>Simulation step {sim.current.step}</span>}
                 <span className="subtle">revision {doc.modelRevision}</span>
               </div>
-              <section className="lower-panel" aria-label="Distribution and simulation">
+              <section ref={lowerRef} className={`lower-panel${lowerOpen && lowerHeight !== null ? ' sized' : ''}`} aria-label="Distribution and simulation"
+                style={lowerOpen && lowerHeight !== null ? { '--lower-h': `${lowerHeight}px`, '--chart-h': `${Math.max(160, lowerHeight - 140)}px` } as React.CSSProperties : undefined}>
+                {lowerOpen && (
+                  <div className="lower-resize" role="separator" aria-orientation="horizontal" tabIndex={0}
+                    aria-label="Resize bottom panel" aria-controls="lower-body"
+                    aria-valuemin={LOWER_MIN} aria-valuemax={Math.round(lowerMax())} aria-valuenow={Math.round(lowerHeight ?? lowerRef.current?.getBoundingClientRect().height ?? LOWER_MIN)}
+                    title="Drag to resize · double-click to reset"
+                    onPointerDown={startLowerResize} onKeyDown={onLowerResizeKey} onDoubleClick={() => setLowerHeight(null)} />
+                )}
                 <div className="lower-panel-header">
                   <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setLowerOpen(!lowerOpen)} aria-expanded={lowerOpen} aria-controls="lower-body" aria-label={lowerOpen ? 'Collapse panel' : 'Expand panel'}>
                     {lowerOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
