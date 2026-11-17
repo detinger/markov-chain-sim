@@ -179,6 +179,19 @@ export const TEACHING_EXAMPLES: typeof EXAMPLES = {
       { id: 'ii', source: 'island', target: 'island', probability: 1 },
     ],
   },
+  threeStateABC: {
+    name: 'Three-state chain (A, B, C)',
+    nodes: [{ id: 'a', name: 'A', x: 250, y: 50 }, { id: 'b', name: 'B', x: 80, y: 300 }, { id: 'c', name: 'C', x: 420, y: 300 }],
+    edges: [
+      { id: 'aa', source: 'a', target: 'a', probability: 0.2 },
+      { id: 'ab', source: 'a', target: 'b', probability: 0.6 },
+      { id: 'ac', source: 'a', target: 'c', probability: 0.2 },
+      { id: 'ba', source: 'b', target: 'a', probability: 0.3 },
+      { id: 'bc', source: 'b', target: 'c', probability: 0.7 },
+      { id: 'ca', source: 'c', target: 'a', probability: 0.5 },
+      { id: 'cc', source: 'c', target: 'c', probability: 0.5 },
+    ],
+  },
   oneState: {
     name: 'One-state chain',
     nodes: [{ id: 'only', name: 'Only state', x: 200, y: 150 }],
@@ -294,6 +307,12 @@ export const EXAMPLE_META: Record<string, ExampleMeta> = {
     description: 'Home and Park visit each other; Island is never reached from them.',
     goals: ['Hitting probability 0 and an infinite expected hitting time for Island'],
     assumptions: ['An unreachable state is allowed; it is not a modeling error.'],
+  },
+  threeStateABC: {
+    group: 'teaching', lesson: 'longrun.stationary', difficulty: 'Intro',
+    description: 'A classic textbook chain: compare the matrix rows with the arrows leaving each state.',
+    goals: ['Read a transition matrix and its diagram side by side', 'Stationary π = [25, 15, 31] / 71 ≈ [0.352, 0.211, 0.437], by hand'],
+    assumptions: ['B never stays in B (P(B→B) = 0); every state still reaches every other, so the chain is irreducible and aperiodic.'],
   },
   oneState: {
     group: 'teaching', lesson: 'foundations.rows', difficulty: 'Intro',
