@@ -493,3 +493,14 @@ body.resizing-rows .react-flow { pointer-events: none; }
 .theory-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 13px; }
 .theory-more { text-align: left; justify-content: flex-start; align-self: flex-start; }
 .example-card .btn { white-space: normal; height: auto; min-height: 28px; text-align: left; padding-top: 4px; padding-bottom: 4px; }
+
+/* ───────────── Resizable inspector (right pane) ───────────── */
+.inspector { position: relative; }
+.inspector-resize { position: absolute; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; z-index: 6; touch-action: none; }
+.inspector-resize::after { content: ''; position: absolute; top: 50%; left: 3px; width: 4px; height: 40px; margin-top: -20px; border-radius: 2px; background: var(--border-strong); opacity: 0; transition: opacity 0.15s, background 0.15s; }
+.inspector-resize:hover::after, .inspector-resize:focus-visible::after, body.resizing-cols .inspector-resize::after { background: var(--primary); opacity: 1; }
+.inspector-resize:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--primary); }
+body.resizing-cols { cursor: col-resize; user-select: none; }
+body.resizing-cols .react-flow, body.resizing-cols iframe { pointer-events: none; }
+@media (max-width: 820px) { .inspector-resize { display: none; } }
+@media (prefers-reduced-motion: reduce) { .inspector-resize::after { transition: none; } }

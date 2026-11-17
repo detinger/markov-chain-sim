@@ -40,6 +40,10 @@ type InspectorTab = 'matrix' | 'state' | 'validate' | 'sequence' | 'explain';
 const INSPECTOR_KEY = 'markov-simulator:inspector';
 const LOWER_KEY = 'markov-simulator:lower-height';
 const LOWER_MIN = 140;
+const INSPECTOR_WIDTH_KEY = 'markov-simulator:inspector-width';
+const INSPECTOR_MIN = 300;
+/** Width the canvas always keeps beside the inspector. */
+const CANVAS_MIN_WIDTH = 360;
 /** Space the canvas always keeps above the bottom panel (status strip + a usable canvas). */
 const CANVAS_RESERVE = 200;
 type Pending = { kind: 'replace'; title: string; next: () => ChainDocumentV1 } | { kind: 'delete'; id: StateId } | null;
@@ -119,6 +123,55 @@ export default function App() {
     handle.addEventListener('pointerup', up);
     handle.addEventListener('pointercancel', up);
   };
+  // Inspector width in px (null = the default from the design tokens). Dragging its left edge sets it.
+  const [inspectorWidth, setInspectorWidth] = useState<number | null>(() => {
+    try { const v = Number(localStorage.getItem(INSPECTOR_WIDTH_KEY)); return v >= INSPECTOR_MIN ? v : null; } catch { return null; }
+  });
+  // Committed after a drag ends, so the canvas re-fits once rather than on every pixel.
+  const [inspectorWidthSettled, setInspectorWidthSettled] = useState(inspectorWidth);
+  useEffect(() => {
+    try { if (inspectorWidth === null) localStorage.removeItem(INSPECTOR_WIDTH_KEY); else localStorage.setItem(INSPECTOR_WIDTH_KEY, String(inspectorWidth)); } catch { /* ignore */ }
+  }, [inspectorWidth]);
+  const workspaceRef = useRef<HTMLElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
+  const inspectorMax = () => Math.max(INSPECTOR_MIN, (workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth) - CANVAS_MIN_WIDTH);
+  const clampInspector = (w: number) => Math.round(Math.min(Math.max(w, INSPECTOR_MIN), inspectorMax()));
+  const startInspectorResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startW = inspectorRef.current?.getBoundingClientRect().width ?? INSPECTOR_MIN;
+    document.body.classList.add('resizing-cols');
+    let last = startW;
+    const move = (ev: PointerEvent) => { last = clampInspector(startW + (startX - ev.clientX)); setInspectorWidth(last); };
+    const up = () => {
+      document.body.classList.remove('resizing-cols');
+      setInspectorWidthSettled(last);
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  };
+  const setInspectorWidthNow = (w: number | null) => { setInspectorWidth(w); setInspectorWidthSettled(w); };
+  const onInspectorResizeKey = (e: React.KeyboardEvent) => {
+    const current = inspectorRef.current?.getBoundingClientRect().width ?? INSPECTOR_MIN;
+    const step = e.shiftKey ? 64 : 16;
+    let next: number | null | undefined;
+    if (e.key === 'ArrowLeft') next = clampInspector(current + step);
+    else if (e.key === 'ArrowRight') next = clampInspector(current - step);
+    else if (e.key === 'Home') next = INSPECTOR_MIN;
+    else if (e.key === 'End') next = inspectorMax();
+    else if (e.key === 'Enter' || e.key === 'Escape') next = null;
+    if (next === undefined) return;
+    e.preventDefault();
+    setInspectorWidthNow(next === null ? null : clampInspector(next));
+  };
+
   const onLowerResizeKey = (e: React.KeyboardEvent) => {
     const current = lowerRef.current?.getBoundingClientRect().height ?? LOWER_MIN;
     const step = e.shiftKey ? 64 : 16;
@@ -358,7 +411,8 @@ export default function App() {
             </div>
           </header>
 
-          <main id="main" className={`workspace${inspectorOpen ? '' : ' inspector-hidden'}`} tabIndex={-1} aria-labelledby="modeler-h">
+          <main id="main" ref={workspaceRef} className={`workspace${inspectorOpen ? '' : ' inspector-hidden'}`} tabIndex={-1} aria-labelledby="modeler-h"
+            style={inspectorWidth !== null ? { '--inspector-width': `min(${inspectorWidth}px, calc(100% - ${CANVAS_MIN_WIDTH}px))` } as React.CSSProperties : undefined}>
             <h1 id="modeler-h" className="visually-hidden">Modeler: {doc.title || 'Untitled model'}</h1>
             <div className="canvas-column" ref={columnRef}>
               <div className="canvas">
@@ -367,7 +421,7 @@ export default function App() {
                 )}
                 <GraphEditor
                   doc={doc}
-                  layoutKey={`${inspectorOpen}|${navCollapsed}`}
+                  layoutKey={`${inspectorOpen}|${navCollapsed}|${inspectorWidthSettled}`}
                   colorMode={resolved}
                   selection={selection}
                   draft={draft}
@@ -447,7 +501,12 @@ export default function App() {
                 ))}
               </aside>
             )}
-            <aside className="inspector" id="inspector" aria-label="Inspector" hidden={!inspectorOpen}>
+            <aside ref={inspectorRef} className="inspector" id="inspector" aria-label="Inspector" hidden={!inspectorOpen}>
+              <div className="inspector-resize" role="separator" aria-orientation="vertical" tabIndex={0}
+                aria-label="Resize inspector" aria-controls="inspector"
+                aria-valuemin={INSPECTOR_MIN} aria-valuemax={Math.round(inspectorMax())} aria-valuenow={Math.round(inspectorWidth ?? inspectorRef.current?.getBoundingClientRect().width ?? INSPECTOR_MIN)}
+                title="Drag to resize · double-click to reset"
+                onPointerDown={startInspectorResize} onKeyDown={onInspectorResizeKey} onDoubleClick={() => setInspectorWidthNow(null)} />
               <div className="inspector-head">
                 <Tabs<InspectorTab>
                   label="Inspector"
