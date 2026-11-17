@@ -3,6 +3,14 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
+/* The desktop shell is a fixed 100vh app frame: only inner panes scroll. Stop scroll
+   chaining to the viewport so macOS elastic overscroll can't bounce the whole frame
+   (most visible on the modeler, which has no page-level scroller). Mobile keeps native
+   document scrolling, so this is desktop-only. */
+@media (min-width: 821px) {
+  html, body { overscroll-behavior: none; }
+  .page-scroll, .inspector-body, .lower-panel-body, .dialog-body { overscroll-behavior: contain; }
+}
 
 body {
   margin: 0;
