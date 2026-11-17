@@ -525,10 +525,12 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phase 1; integrate Phase 2 explanation content.
 
-- [ ] Implement the versioned RNG/stream contract, categorical sampler, step runner, immutable traces, and initial sampling.
-- [ ] Add Play/Pause/Step/Stop/Reset, speed, seed, horizon, and step explanations.
-- [ ] Add clearly separated exact-distribution playback and accessible tables.
-- [ ] Handle mid-run edits, replay, absorption-stop, and reduced motion.
+> Progress (2026-11-17): RNG `markov-ctr32x2-v1` + draw contract in ADR 0002; 18 Vitest tests cover reference vectors, CDF boundaries, seed replay, stepping = full run, prefix stability, absorption-stop, H=0, CSV. Playback/edit-pause/reduced-motion verified with scripted headless Chrome; no committed Playwright E2E yet. Phase 2 lesson content not yet integrated.
+
+- [x] Implement the versioned RNG/stream contract, categorical sampler, step runner, immutable traces, and initial sampling.
+- [x] Add Play/Pause/Step/Stop/Reset, speed, seed, horizon, and step explanations.
+- [x] Add clearly separated exact-distribution playback and accessible tables.
+- [x] Handle mid-run edits, replay, absorption-stop, and reduced motion.
 
 **Exit gate:** identical configuration/seed yields identical trajectory under stepping, playback, different speeds, and replay; deterministic rows and zero boundaries pass; initial state/time indexing is correct; animation can be disabled without losing information.
 

@@ -9,6 +9,8 @@ export type StateNodeData = {
   invalid: boolean;
   unreachable: boolean;
   color: string;
+  /** Current state of the sample trajectory. */
+  active?: boolean;
   onRename: (label: string) => void;
 };
 
@@ -35,11 +37,12 @@ export default function CircleNode({ data }: NodeProps<Node<StateNodeData>>) {
     data.absorbing ? 'absorbing' : null,
     data.invalid ? 'row needs repair' : null,
     data.unreachable ? 'not reachable from the start' : null,
+    data.active ? 'current simulation state' : null,
   ].filter(Boolean).join(', ');
 
   return (
     <div
-      className={`state-node${data.absorbing ? ' absorbing' : ''}${data.unreachable ? ' unreachable' : ''}`}
+      className={`state-node${data.absorbing ? ' absorbing' : ''}${data.unreachable ? ' unreachable' : ''}${data.active ? ' sim-current' : ''}`}
       onDoubleClick={() => setIsEditing(true)}
       onKeyDown={(e) => {
         // Keyboard rename alternative to double-click (B03).

@@ -77,3 +77,9 @@
 }
 .edge-label.selected { border-color: var(--markov-selected); color: var(--markov-selected); background: var(--markov-selected-soft); }
 .edge-label.draft { border-style: dashed; color: var(--text-subtle); }
+
+/* Sample-trajectory overlay: orange = active simulation, distinct from blue selection. */
+.state-node.sim-current { border-color: var(--markov-active); box-shadow: 0 0 0 4px var(--markov-active-soft), 0 0 0 6px var(--markov-active); }
+.state-node.absorbing.sim-current { box-shadow: 0 0 0 3px var(--markov-fill), 0 0 0 5px var(--markov-stroke), 0 0 0 9px var(--markov-active); }
+.react-flow__edge-path.sim-active, .react-flow__edge .sim-active { stroke: var(--markov-active); stroke-width: 3; }
+.simulation-token { fill: var(--markov-active); stroke: var(--bg-elevated); stroke-width: 2; }

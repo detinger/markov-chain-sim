@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle, BookOpen, CheckCircle2, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
-  Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Plus, Redo2, Route, Sun, Undo2, Upload,
+  AlertCircle, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
+  Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
 } from 'lucide-react';
 import GraphEditor from './components/GraphEditor';
 import MatrixEditor, { InitialDistributionEditor } from './components/MatrixEditor';
-import DistributionPanel from './components/SimulationChart';
+import DistributionView from './components/SimulationChart';
+import SimulationPanel from './features/simulation/SimulationPanel';
+import { usePrefersReducedMotion, useSimulation } from './features/simulation/useSimulation';
 import SequenceCalculator from './components/SequenceCalculator';
 import TheoryModal from './components/TheoryModal';
 import ExamplesDialog from './components/ExamplesDialog';
@@ -43,6 +45,10 @@ export default function App() {
   const [dialog, setDialog] = useState<'theory' | 'examples' | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const sim = useSimulation(doc, chain);
+  const reducedMotion = usePrefersReducedMotion();
+  const [lowerOpen, setLowerOpen] = useState(true);
+  const [lowerMode, setLowerMode] = useState<'exact' | 'sample'>('exact');
   const cellRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -206,7 +212,9 @@ export default function App() {
             </div>
             <span className="toolbar-sep" aria-hidden />
             <div className="toolbar-group">
-              <button className="btn btn-primary" onClick={addState}><Plus size={16} /> Add State</button>
+              <button className="btn" onClick={addState}><Plus size={16} /> Add State</button>
+              <button className="btn btn-primary" disabled={!chain} title={chain ? 'Animate one random path' : 'Fix validation issues first'}
+                onClick={() => { setLowerMode('sample'); setLowerOpen(true); sim.play(); }}><Play size={16} /> Run simulation</button>
               <button className="btn" onClick={() => replaceProject('New Model', () => createEmptyDocument())}><FilePlus2 size={16} /> New Model</button>
             </div>
             <span className="toolbar-sep" aria-hidden />
@@ -232,6 +240,7 @@ export default function App() {
                   onSelect={onGraphSelect}
                   dispatch={dispatch}
                   onConnectPair={onConnectPair}
+                  sim={lowerMode === 'sample' && sim.overlay && !sim.modelChanged ? { ...sim.overlay, travelMs: reducedMotion ? 0 : Math.min(900, 700 / sim.config.speed) } : null}
                 />
                 {doc.stateOrder.length === 0 && (
                   <div className="canvas-empty">
@@ -239,7 +248,9 @@ export default function App() {
                       <h3>Empty model</h3>
                       <p className="muted">Create your first state, or open an example to explore a working model. The first state starts with probability 1 and a self-loop of 1.</p>
                       <div className="row" style={{ justifyContent: 'center' }}>
-                        <button className="btn btn-primary" onClick={addState}><Plus size={16} /> Add State</button>
+                        <button className="btn" onClick={addState}><Plus size={16} /> Add State</button>
+              <button className="btn btn-primary" disabled={!chain} title={chain ? 'Animate one random path' : 'Fix validation issues first'}
+                onClick={() => { setLowerMode('sample'); setLowerOpen(true); sim.play(); }}><Play size={16} /> Run simulation</button>
                         <button className="btn" onClick={() => setDialog('examples')}><Library size={16} /> Open an example</button>
                       </div>
                     </div>
@@ -253,9 +264,28 @@ export default function App() {
                   ? <span className="ok"><CheckCircle2 size={12} aria-hidden /> Valid</span>
                   : <button className="btn btn-ghost btn-sm bad" onClick={() => setTab('validate')}><AlertCircle size={12} aria-hidden /> {errorCount} issue{errorCount > 1 ? 's' : ''}</button>}
                 {doc.metadata.stepLabel && <span>1 step = 1 {doc.metadata.stepLabel}</span>}
+                {lowerMode === 'sample' && sim.current && <span>Simulation step {sim.current.step}</span>}
                 <span className="subtle">revision {doc.modelRevision}</span>
               </div>
-              <DistributionPanel doc={doc} chain={analysisChain} stale={stale} theme={resolved} />
+              <section className="lower-panel" aria-label="Distribution and simulation">
+                <div className="lower-panel-header">
+                  <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setLowerOpen(!lowerOpen)} aria-expanded={lowerOpen} aria-controls="lower-body" aria-label={lowerOpen ? 'Collapse panel' : 'Expand panel'}>
+                    {lowerOpen ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                  </button>
+                  <div className="segmented mode-switch" role="group" aria-label="View">
+                    <button className="btn btn-sm" aria-pressed={lowerMode === 'exact'} onClick={() => { setLowerMode('exact'); setLowerOpen(true); }}>Exact distribution</button>
+                    <button className="btn btn-sm" aria-pressed={lowerMode === 'sample'} onClick={() => { setLowerMode('sample'); setLowerOpen(true); }}>Sample trajectory</button>
+                  </div>
+                  <span className="hint">{lowerMode === 'exact' ? 'Deterministic: the probability of each state at every step.' : 'Random: one seeded realization X₀, X₁, … moving along the arcs.'}</span>
+                </div>
+                {lowerOpen && (
+                  <div className="lower-panel-body" id="lower-body">
+                    {lowerMode === 'exact'
+                      ? <DistributionView doc={doc} chain={analysisChain} stale={stale} theme={resolved} />
+                      : <SimulationPanel doc={doc} sim={sim} valid={!!chain} />}
+                  </div>
+                )}
+              </section>
             </div>
 
             <aside className="inspector" aria-label="Inspector">

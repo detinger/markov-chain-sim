@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -16,7 +17,7 @@ export default function ArcEdge({
   selected,
   data
 }: EdgeProps) {
-  const edgeData = (data ?? {}) as { draft?: boolean; onSelect?: () => void; description?: string };
+  const edgeData = (data ?? {}) as { draft?: boolean; onSelect?: () => void; description?: string; token?: { key: string; duration: number } | null; active?: boolean };
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
   const edges = useEdges();
@@ -161,7 +162,8 @@ export default function ArcEdge({
 
   return (
     <>
-      <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={14} />
+      <BaseEdge path={path} markerEnd={markerEnd} style={style} interactionWidth={14} className={edgeData.active ? 'sim-active' : undefined} />
+      {edgeData.token && <TokenOnPath key={edgeData.token.key} path={path} duration={edgeData.token.duration} />}
 
       {label && (
         <EdgeLabelRenderer>
@@ -177,5 +179,34 @@ export default function ArcEdge({
         </EdgeLabelRenderer>
       )}
     </>
+  );
+}
+
+/** Simulation token travelling along the same path users see (STYLE.md §15.3). */
+function TokenOnPath({ path, duration }: { path: string; duration: number }) {
+  const ref = useRef<SVGPathElement>(null);
+  const [pt, setPt] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const total = el.getTotalLength();
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const k = Math.min(1, (now - start) / duration);
+      const eased = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+      const p = el.getPointAtLength(total * eased);
+      setPt({ x: p.x, y: p.y });
+      if (k < 1) frame = requestAnimationFrame(tick);
+      else setPt(null);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [path, duration]);
+  return (
+    <g aria-hidden="true">
+      <path ref={ref} d={path} fill="none" stroke="none" />
+      {pt && <circle className="simulation-token" cx={pt.x} cy={pt.y} r={7} />}
+    </g>
   );
 }

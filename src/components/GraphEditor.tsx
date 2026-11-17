@@ -41,9 +41,11 @@ interface GraphEditorProps {
   onSelect: (s: Selection) => void;
   dispatch: (c: Command, coalesceKey?: string) => void;
   onConnectPair: (from: StateId, to: StateId) => void;
+  /** Sample-trajectory overlay; travelMs = 0 means highlight only (reduced motion). */
+  sim?: { stateId: StateId; edge: { from: StateId; to: StateId } | null; key: string; travelMs: number } | null;
 }
 
-export default function GraphEditor({ doc, colorMode, selection, draft, flags, onSelect, dispatch, onConnectPair }: GraphEditorProps) {
+export default function GraphEditor({ doc, colorMode, selection, draft, flags, onSelect, dispatch, onConnectPair, sim }: GraphEditorProps) {
   const initialByState = useMemo(() => new Map(doc.initial.map((e) => [e.stateId, e.probability])), [doc.initial]);
   const colorIndex = useMemo(() => new Map(doc.states.map((s, i) => [s.id, i])), [doc.states]);
 
@@ -67,10 +69,11 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
           invalid: flags.invalid.has(id),
           unreachable: flags.unreachable.has(id),
           color: doc.layout.colors?.[id] ?? stateColorVar(colorIndex.get(id) ?? 0),
+          active: sim?.stateId === id,
           onRename: (label: string) => dispatch({ type: 'renameState', id, label }),
         },
       };
-    }), [doc, selection, flags, initialByState, colorIndex, dispatch]);
+    }), [doc, selection, flags, initialByState, colorIndex, dispatch, sim?.stateId]);
 
   // Local node state keeps drags smooth; the document is updated once on drag stop (one undo step).
   const [nodes, setNodes] = useState<Node<StateNodeData>[]>(buildNodes);
@@ -83,7 +86,8 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
       .filter((t) => t.probability > 0)
       .map((t) => {
         const isSel = selection?.kind === 'transition' && selection.from === t.from && selection.to === t.to;
-        const color = isSel ? 'var(--markov-selected)' : 'var(--markov-stroke)';
+        const isSim = !!sim?.edge && sim.edge.from === t.from && sim.edge.to === t.to;
+        const color = isSim ? 'var(--markov-active)' : isSel ? 'var(--markov-selected)' : 'var(--markov-stroke)';
         return {
           id: `${t.from}->${t.to}`,
           source: t.from,
@@ -93,6 +97,8 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
           label: formatProbability(t.probability, 2),
           markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
           data: {
+            active: isSim,
+            token: isSim && sim!.travelMs > 0 ? { key: sim!.key, duration: sim!.travelMs } : null,
             onSelect: () => onSelect({ kind: 'transition', from: t.from, to: t.to }),
             description: `Transition ${labelOf(t.from)} to ${labelOf(t.to)}, probability ${t.probability}`,
           },
@@ -113,7 +119,7 @@ export default function GraphEditor({ doc, colorMode, selection, draft, flags, o
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc.transitions, doc.states, selection, draft, onSelect]);
+  }, [doc.transitions, doc.states, selection, draft, onSelect, sim]);
 
   const handleNodesChange = useCallback((changes: NodeChange<Node<StateNodeData>>[]) => {
     setNodes((ns) => applyNodeChanges(changes.filter((c) => c.type !== 'remove'), ns));

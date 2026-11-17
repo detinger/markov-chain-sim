@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { evolveDistribution, formatProbability, type ChainDocumentV1, type CompiledChain, type StateId } from '../domain/markov';
 import { readTokens, type ResolvedTheme } from '../app/theme';
 import { CHART_TOKENS } from './ui';
@@ -13,8 +12,7 @@ interface Props {
 }
 
 /** Exact distribution μₜ = μ₀Pᵗ (PLAN.md B09, Module D mode 2). Not a random simulation. */
-export default function DistributionPanel({ doc, chain, stale, theme }: Props) {
-  const [open, setOpen] = useState(true);
+export default function DistributionView({ doc, chain, stale, theme }: Props) {
   const [horizon, setHorizon] = useState(20);
   const [step, setStep] = useState(1);
   const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
@@ -32,31 +30,20 @@ export default function DistributionPanel({ doc, chain, stale, theme }: Props) {
   const shown = Math.min(step, horizon);
   const unit = doc.metadata.stepLabel ? `${doc.metadata.stepLabel}s` : 'steps';
 
+  if (!series || !data) {
+    return <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>Choose a starting state or enter a distribution that totals 1, and make every row total 1.</p></div>;
+  }
   return (
-    <section className="lower-panel" aria-labelledby="dist-heading">
-      <div className="lower-panel-header">
-        <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="dist-body" aria-label={open ? 'Collapse distribution panel' : 'Expand distribution panel'}>
-          {open ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-        </button>
-        <h3 id="dist-heading">State probability distribution</h3>
-        <span className="badge badge-primary">Exact</span>
-        <span className="hint">μₜ = μ₀Pᵗ · probability of being in each state after t {unit}</span>
-        <span className="toolbar-spacer" />
-        {open && (
-          <label className="row hint" style={{ gap: 6 }}>
-            Horizon
-            <input className="input input-sm num" type="number" min={0} max={500} value={horizon} style={{ width: 72 }}
-              onChange={(e) => { const v = Math.max(0, Math.min(500, Math.floor(Number(e.target.value) || 0))); setHorizon(v); }} />
-          </label>
-        )}
-      </div>
-      {open && (
-        <div className="lower-panel-body" id="dist-body">
-          {!series || !data ? (
-            <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>Choose a starting state or enter a distribution that totals 1, and make every row total 1.</p></div>
-          ) : (
             <>
               <div>
+                <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span className="hint">μₜ = μ₀Pᵗ · probability of being in each state after t {unit}</span>
+                  <label className="row hint" style={{ gap: 6 }}>
+                    Horizon
+                    <input className="input input-sm num" type="number" min={0} max={500} value={horizon} style={{ width: 72 }}
+                      onChange={(e) => setHorizon(Math.max(0, Math.min(500, Math.floor(Number(e.target.value) || 0))))} />
+                  </label>
+                </div>
                 {stale && <p className="hint" style={{ color: 'var(--warning)' }}>These results use an earlier model version.</p>}
                 <div className="chart-box" role="img" aria-label={`Line chart of state probabilities from step 0 to ${horizon}. The table beside it lists exact values.`}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -112,9 +99,5 @@ export default function DistributionPanel({ doc, chain, stale, theme }: Props) {
                 )}
               </div>
             </>
-          )}
-        </div>
-      )}
-    </section>
   );
 }

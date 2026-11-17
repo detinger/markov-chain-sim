@@ -88,9 +88,10 @@ Ensure you have [Node.js](https://nodejs.org/) installed on your system.
 4. **Edit Probabilities**: Use the "Transition Matrix" in the inspector. Rows must total exactly 1; the *Validate* tab explains problems and offers undoable repairs.
 5. **Choose a start**: Set the starting distribution μ₀ under the matrix (a single state or a custom distribution).
 6. **Calculate Paths**: The *Sequence* tab computes joint or given-start path probabilities with a factor-by-factor breakdown.
-7. **Analyze**: The *Explain* tab shows communicating classes, periods, stationary distribution(s), and absorption probabilities.
-8. **Save**: Work autosaves on this device; use Export/Import for project files. Undo/redo with Ctrl/⌘+Z.
-9. **Reset**: Use the "New Model" button to start a fresh canvas (undoable).
+7. **Simulate**: "Run simulation" (or *Sample trajectory* in the lower panel) animates one seeded random path. Play/Pause/Step/Step back/Stop/Reset never change the path; the same seed always reproduces it. "Explain this step" shows the random draw and the row's probability intervals. Export the trace as CSV.
+8. **Analyze**: The *Explain* tab shows communicating classes, periods, stationary distribution(s), and absorption probabilities.
+9. **Save**: Work autosaves on this device; use Export/Import for project files. Undo/redo with Ctrl/⌘+Z.
+10. **Reset**: Use the "New Model" button to start a fresh canvas (undoable).
 
 ---
 
