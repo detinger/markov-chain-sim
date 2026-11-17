@@ -91,9 +91,10 @@ Ensure you have [Node.js](https://nodejs.org/) installed on your system.
 7. **Simulate**: "Run simulation" (or *Sample trajectory* in the lower panel) animates one seeded random path. Play/Pause/Step/Step back/Stop/Reset never change the path; the same seed always reproduces it. "Explain this step" shows the random draw and the row's probability intervals. Export the trace as CSV.
 8. **Analyze**: The *Explain* tab (and the fuller *Analysis* page) shows communicating classes, periods, stationary distribution(s), absorption probabilities and expected visits, and — for a chosen target set — hitting probabilities, unconditional vs. conditional expected hitting times, Pr(T ≤ t), and mean return times.
 9. **Experiment**: The *Experiments* page runs thousands of independent seeded trajectories in a background worker (cancellable) and compares estimates — with 95% Wilson / Student-t intervals and explicit censoring — against exact values. Export CSV or a full run bundle.
-10. **Learn**: *Lessons* (levels 1–4) pair a worked model with an interactive demo, a common mistake, and a quick check. *Challenges* (repair a row, build a weather model, predict a path, predict two steps) give three-part feedback and progressive hints. Progress is saved on this device and can be exported or reset.
-11. **Save**: Work autosaves on this device; use Export/Import for project files. Undo/redo with Ctrl/⌘+Z.
-12. **Reset**: Use the "New Model" button to start a fresh canvas (undoable).
+10. **Compare**: The *Compare* page freezes the current model as a baseline; keep editing in the modeler and compare exact results (reach probabilities, hitting and absorption times, absorption outcomes, per-state distribution and occupancy, optional rewards) under one shared definition. Changes are shown in percentage points, relative change only where defined, and nothing is labeled better or worse unless you set a goal. Includes row-preserving parameter sweeps and an optional Monte Carlo check with independent streams.
+11. **Learn**: *Lessons* (levels 1–4) pair a worked model with an interactive demo, a common mistake, and a quick check. *Challenges* (repair a row, build a weather model, predict a path, predict two steps, compare Casino strategies, escape the Doomscroll trap) give three-part feedback and progressive hints. Progress is saved on this device and can be exported or reset.
+12. **Save**: Work autosaves on this device; use Export/Import for project files. Undo/redo with Ctrl/⌘+Z.
+13. **Reset**: Use the "New Model" button to start a fresh canvas (undoable).
 
 ---
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
-  BarChart3, FlaskConical, GraduationCap, Trophy, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
+  BarChart3, FlaskConical, GitCompare, GraduationCap, Trophy, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
 } from 'lucide-react';
 import GraphEditor from './components/GraphEditor';
 import MatrixEditor, { InitialDistributionEditor } from './components/MatrixEditor';
@@ -28,6 +28,8 @@ import AnalysisPage from './features/analysis/AnalysisPage';
 import { useExperiment } from './features/experiments/useExperiment';
 import LearnPage from './features/learning/LearnPage';
 import ChallengesPage from './features/challenges/ChallengesPage';
+import ComparePage from './features/comparison/ComparePage';
+import { useBaseline } from './features/comparison/baseline';
 import { useProgress } from './features/learning/progress';
 import { ISSUE_LESSONS, LESSONS, LESSON_BY_ID } from './data/lessons';
 import { snapshotToDocument } from './domain/assessment';
@@ -55,7 +57,8 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const sim = useSimulation(doc, chain);
   const experiment = useExperiment();
-  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments' | 'learn' | 'challenges'>('modeler');
+  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments' | 'compare' | 'learn' | 'challenges'>('modeler');
+  const baseline = useBaseline();
   const progress = useProgress();
   const [lessonId, setLessonId] = useState(LESSONS[0].id);
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -163,7 +166,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (el?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
       else if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
@@ -196,6 +199,7 @@ export default function App() {
             ['modeler', 'Modeler', <Network key="i" />],
             ['analysis', 'Analysis', <BarChart3 key="i" />],
             ['experiments', 'Experiments', <FlaskConical key="i" />],
+            ['compare', 'Compare', <GitCompare key="i" />],
           ] as const).map(([id, text, icon]) => (
             <button key={id} className="nav-link" aria-current={page === id ? 'page' : undefined} title={text} onClick={() => setPage(id)}>
               {icon}<span className="nav-text">{text}</span><span className="visually-hidden">{text}</span>
@@ -231,6 +235,9 @@ export default function App() {
             onOpenChallenge={(id) => { setChallengeId(id); setPage('challenges'); }}
             onOpenInModeler={(snap) => { setPage('modeler'); replaceProject(`Open “${snap.title}” in the modeler`, () => snapshotToDocument(snap)); }} /></main>}
           {page === 'challenges' && <main id="main" className="page-scroll" tabIndex={-1}><ChallengesPage challengeId={challengeId} onSelect={setChallengeId} onOpenLesson={openLesson} progress={progress} /></main>}
+          {page === 'compare' && <main id="main" className="page-scroll" tabIndex={-1}><ComparePage doc={doc} chain={chain} baseline={baseline} theme={resolved}
+            dispatch={(c) => dispatch(c)} onEditInModeler={() => setPage('modeler')}
+            onLoadIntoModeler={(b) => { const copy = importDocument(exportDocument(b)); if (copy.ok) { load(copy.document); setSelection(null); toast('success', 'The alternative now matches the baseline. Undo in the modeler to get your edits back.'); } }} /></main>}
           {page === 'experiments' && <main id="main" className="page-scroll" tabIndex={-1}><ExperimentsPage doc={doc} chain={chain} experiment={experiment} theme={resolved} /></main>}
           {page === 'modeler' && <>
           <header className="toolbar">

@@ -127,3 +127,32 @@ export function normalQuantile(p: number): number {
   const r = q * q;
   return ((((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q) / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
 }
+
+// ───────────── differences between two independent samples (PLAN.md Module F) ─────────────
+
+/**
+ * Newcombe hybrid score interval for p₂ − p₁ from two independent binomial samples
+ * (Newcombe 1998, method 10), built from the two Wilson intervals.
+ */
+export function newcombeDifference(k1: number, n1: number, k2: number, n2: number, level = 0.95): Interval | null {
+  const a = wilson(k1, n1, level);
+  const b = wilson(k2, n2, level);
+  if (!a || !b) return null;
+  const d = b.estimate - a.estimate;
+  const lower = d - Math.sqrt((b.estimate - b.lower) ** 2 + (a.upper - a.estimate) ** 2);
+  const upper = d + Math.sqrt((b.upper - b.estimate) ** 2 + (a.estimate - a.lower) ** 2);
+  return { estimate: d, lower: Math.max(-1, lower), upper: Math.min(1, upper), level, method: 'Newcombe hybrid score (independent samples)' };
+}
+
+/** Welch interval for mean₂ − mean₁ from two independent samples; null when either has n < 2. */
+export function welchDifference(a: MeanSummary, b: MeanSummary, level = 0.95): Interval | null {
+  if (a.n < 2 || b.n < 2) return null;
+  const va = (a.sd * a.sd) / a.n;
+  const vb = (b.sd * b.sd) / b.n;
+  const d = b.mean - a.mean;
+  const se = Math.sqrt(va + vb);
+  if (se === 0) return { estimate: d, lower: d, upper: d, level, method: 'Welch t (no variation observed)' };
+  const df = (va + vb) ** 2 / ((va * va) / (a.n - 1) + (vb * vb) / (b.n - 1));
+  const t = studentTQuantile(0.5 + level / 2, df);
+  return { estimate: d, lower: d - t * se, upper: d + t * se, level, method: `Welch t (df ≈ ${df.toFixed(1)})` };
+}

@@ -554,10 +554,12 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phase 4. **Owners:** analytics and integration.
 
-- [ ] Preserve baseline snapshots; duplicate alternatives; show probability/configuration differences.
-- [ ] Implement aligned result tables/charts, percentage-point changes, correct relative-change cases, and uncertainty context.
-- [ ] Add controlled parameter sweeps with row-preserving edits; optional finite-horizon rewards only with specified semantics.
-- [ ] Add Casino and Doomscroll comparison exercises.
+- [x] Preserve baseline snapshots; duplicate alternatives; show probability/configuration differences.
+- [x] Implement aligned result tables/charts, percentage-point changes, correct relative-change cases, and uncertainty context.
+- [x] Add controlled parameter sweeps with row-preserving edits; optional finite-horizon rewards only with specified semantics.
+- [x] Add Casino and Doomscroll comparison exercises.
+
+> Progress (2026-11-17): see ADR 0005. Compare page with frozen baseline (separate storage key), stable-ID or explicit alignment, change list, exact metric table with pp/relative/“not defined” semantics, optional per-metric goal, Pr(T_A ≤ t) overlay, row-preserving sweeps, optional independent-stream Monte Carlo check (Newcombe/Welch difference intervals), generated explanation, and JSON export. 21 Vitest tests (change semantics, alignment, Casino hand value, sweeps, Newcombe published example, comparison challenges). Exit gate walked through with scripted headless Chrome (light/dark, 390 px). Common random numbers deliberately not offered.
 
 **Exit gate:** comparable metrics share definitions/horizons/targets or disclose differences; baseline is immutable; zero/infinite/undefined comparisons are intelligible; no automatic “better” color without an objective.
 

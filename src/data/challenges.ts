@@ -1,5 +1,6 @@
-// First four challenges (PLAN.md Module G). Grading is deterministic and uses exact model calculations.
-import type { ChallengeDefinition, ModelSnapshot } from '../domain/assessment';
+// Challenges (PLAN.md Module G) (PLAN.md Module G). Grading is deterministic and uses exact model calculations.
+import { documentToSnapshot, type ChallengeDefinition, type ModelSnapshot } from '../domain/assessment';
+import { exampleToDocument } from '../lib/examples';
 
 const st = (id: string, label: string, x: number, y: number) => ({ id, label, x, y });
 
@@ -115,6 +116,60 @@ export const CHALLENGES: ChallengeDefinition[] = [
     rubric: 'μₜ(j) is a sum over every path that ends in j at step t.',
     reference: { answers: { mu2car: 0.28 } },
     nextConcept: 'Next: what happens after many steps? (Long-run behavior)',
+  },
+  {
+    id: 'compare-strategies', version: 1, level: 4, title: 'Compare strategies (Casino)',
+    prerequisites: ['absorption.outcomes'],
+    objective: 'Change only the “Feeling Lucky” strategy so that the chance of ending Rich from Playing Safe is at least 12%.',
+    scenario: [
+      'In the Casino model a player starts at “Playing Safe”. The baseline chance of eventually reaching “Walk Away Rich” is about 9%.',
+      'The only thing the player controls is what they do when “Feeling Lucky”: retreat to Playing Safe or move up to the High Roller Room. The house rule fixes the chance of going broke from Feeling Lucky at 0.3.',
+      'This is a toy model with invented numbers. Real casino games are designed so that the house wins on average; do not read it as advice.',
+    ],
+    mode: 'model', starter: { ...documentToSnapshot(exampleToDocument('gambler')), title: 'Casino (baseline)' },
+    lockedRows: ['1', '2', '4', '5', '6'], allowStructureEdits: false,
+    assertions: [
+      { kind: 'rows-valid' },
+      { kind: 'rows-locked' },
+      { kind: 'transition-range', from: '3', to: '1', min: 0.3, max: 0.3, why: 'The house rule fixes P(Feeling Lucky → Broke & Busted) at 0.3; only the remaining 0.7 can be redistributed.' },
+      { kind: 'metric', metric: { type: 'absorb', state: '6', label: 'Pr(end in Walk Away Rich)' }, op: 'at-least', value: 0.12,
+        why: 'Compare the two exits from Feeling Lucky: from the High Roller Room the chance of ending Rich is about 38%, but from Playing Safe it is only about 9%, so retreating gives up most of the upside.' },
+    ],
+    hints: [
+      'Read the baseline: open the Compare page (or Analysis) and note Pr(end Rich) ≈ 0.0905 from Playing Safe. Only the Feeling Lucky row may change, and its Broke entry must stay 0.3.',
+      'Preserve the row constraint: whatever you add to “High Roller Room” must come out of “Playing Safe” (or another destination) so the row still totals 1.',
+      'Compare the exact metric for a few splits of the remaining 0.7, e.g. 0.3/0.4 (baseline), 0.1/0.6, 0/0.7. Which destination has the higher chance of ending Rich?',
+    ],
+    rubric: 'In an absorbing chain, eventual outcomes follow from where each choice leads: route mass toward states with higher absorption probability into the goal. Because Broke and Rich are the only absorbing states, any gain in Pr(Rich) is an equal loss in Pr(Broke).',
+    reference: { snapshot: (() => { const b = documentToSnapshot(exampleToDocument('gambler')); return { ...b, P: b.P.map((r, i) => (i === 2 ? [0.3, 0, 0, 0.7, 0, 0] : r)) }; })() },
+    nextConcept: 'Next: a higher probability is not automatically “better” — try Escape the trap, where the metric and the goal can disagree.',
+  },
+  {
+    id: 'escape-trap', version: 1, level: 4, title: 'Escape the trap (Doomscroll)',
+    prerequisites: ['absorption.first-passage'],
+    objective: 'Edit only the “Watching Reels” row so the expected number of steps from Open App to Close App is at most 12, while keeping autoplay at 0.5 or more.',
+    scenario: [
+      'In the Doomscroll model a session starts at “Open App” and ends at “Close App (Rage Quit)”. The baseline expected session length is about 14.75 steps.',
+      'You redesign the reels feature, so only the Watching Reels row may change. Product insists that at least half of reels lead to another reel: P(Watching Reels → Watching Reels) ≥ 0.5.',
+      'The numbers are invented for teaching. A shorter session is the goal here; ask yourself afterwards whether “shorter” is the right goal.',
+    ],
+    mode: 'model', starter: { ...documentToSnapshot(exampleToDocument('socialMedia')), title: 'Doomscroll (baseline)' },
+    lockedRows: ['1', '2', '4', '5', '6', '7'], allowStructureEdits: false,
+    assertions: [
+      { kind: 'rows-valid' },
+      { kind: 'rows-locked' },
+      { kind: 'transition-range', from: '3', to: '3', min: 0.5, max: 1, why: 'The scenario requires autoplay: at least half of reels must lead to another reel.' },
+      { kind: 'metric', metric: { type: 'mean-hit', targets: ['7'], label: 'Expected steps from Open App to Close App', unit: 'steps' }, op: 'at-most', value: 12,
+        why: 'Where the freed-up probability goes matters: Mindless Scrolling loops back into reels, while Reading Comments (or a direct way out) leads toward closing the app sooner.' },
+    ],
+    hints: [
+      'Identify the target: the session ends when the chain first reaches Close App. The metric is the expected hitting time E[T] from Open App (baseline ≈ 14.75 steps).',
+      'Lowering the Reels self-loop alone is not enough — the probability you remove has to go somewhere, and destinations differ. Try sending it to Mindless Scrolling, then to Reading Comments, and compare.',
+      'Keep Watching Reels → Watching Reels at 0.5 and compare a few allowed rows exactly, e.g. 0.5/0.5 to Mindless Scrolling versus 0.5/0.5 to Reading Comments, or add a small “take a break” transition to Close App.',
+    ],
+    rubric: 'Expected hitting times depend on the whole route to the target, not just one self-loop: moving probability toward states that lead out (here Reading Comments → Getting Triggered → Rage Quit, or a direct exit) shortens the expected time, while moving it into another loop lengthens it.',
+    reference: { snapshot: (() => { const b = documentToSnapshot(exampleToDocument('socialMedia')); return { ...b, P: b.P.map((r, i) => (i === 2 ? [0, 0, 0.5, 0.5, 0, 0, 0] : r)) }; })() },
+    nextConcept: 'Reflect: the comments route “wins” by getting people triggered. A metric only says what it measures — choosing the objective is part of the model. Try the same edit on the Compare page with an explicit goal.',
   },
 ];
 

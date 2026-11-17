@@ -65,7 +65,12 @@ function ChallengeView({ def, onBack, onOpenLesson, progress }: { def: Challenge
   const saved = progress.progress.challenges[def.id];
   const [hintsShown, setHintsShown] = useState(saved?.hintsUsed ?? 0);
   const cellRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const dispatch = (c: Command) => { setDoc((d) => applyCommand(d, c)); setResult(null); };
+  const dispatch = (c: Command) => {
+    // Fixed rows are read-only in the UI; also ignore repairs that would touch them.
+    const row = 'from' in c ? c.from : 'stateId' in c && c.type !== 'setInitial' && c.type !== 'setSingleStart' ? c.stateId : null;
+    if (row && def.lockedRows?.includes(row)) return;
+    setDoc((d) => applyCommand(d, c)); setResult(null);
+  };
   const snapshot = useMemo(() => documentToSnapshot(doc), [doc]);
   const issues = useMemo(() => validateDocument(doc), [doc]);
 
@@ -139,8 +144,8 @@ function ChallengeView({ def, onBack, onOpenLesson, progress }: { def: Challenge
               )}
               {doc.stateOrder.length > 0 && (
                 <>
-                  <div className="section"><h4>Transition matrix</h4><MatrixEditor doc={doc} selection={selection} onSelect={setSelection} dispatch={dispatch} cellRefs={cellRefs} /></div>
-                  {!def.roles && <div className="section"><h4>Starting distribution μ₀</h4><InitialDistributionEditor doc={doc} dispatch={dispatch} /></div>}
+                  <div className="section"><h4>Transition matrix</h4><MatrixEditor doc={doc} selection={selection} onSelect={setSelection} dispatch={dispatch} cellRefs={cellRefs} lockedRows={def.lockedRows} />{def.lockedRows?.length ? <p className="hint">Shaded rows are fixed in this exercise.</p> : null}</div>
+                  {!def.roles && !def.lockedRows && <div className="section"><h4>Starting distribution μ₀</h4><InitialDistributionEditor doc={doc} dispatch={dispatch} /></div>}
                   <details open={issues.some((i) => i.severity === 'error')}>
                     <summary className="hint" style={{ cursor: 'pointer' }}>Validate ({issues.filter((i) => i.severity === 'error').length} issues)</summary>
                     <div style={{ marginTop: 8 }}><ValidationPanel issues={issues} dispatch={dispatch} onFocusIssue={(s) => setSelection(s)} /></div>

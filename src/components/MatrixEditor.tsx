@@ -71,9 +71,11 @@ interface MatrixEditorProps {
   onSelect: (s: Selection) => void;
   dispatch: (c: Command, coalesceKey?: string) => void;
   cellRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  /** Rows shown read-only (e.g. a challenge's fixed rows). */
+  lockedRows?: readonly StateId[];
 }
 
-export default function MatrixEditor({ doc, selection, onSelect, dispatch, cellRefs }: MatrixEditorProps) {
+export default function MatrixEditor({ doc, selection, onSelect, dispatch, cellRefs, lockedRows }: MatrixEditorProps) {
   const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
   const [typingError, setTypingError] = useState<string | null>(null);
 
@@ -108,10 +110,13 @@ export default function MatrixEditor({ doc, selection, onSelect, dispatch, cellR
               const valid = Math.abs(sum - 1) <= EPS_ROW;
               return (
                 <tr key={from} className={`${valid ? '' : 'row-invalid'} ${selFrom === from ? 'row-selected' : ''}`}>
-                  <th scope="row" title={label(from)}>{label(from)}</th>
+                  <th scope="row" title={label(from)}>{label(from)}{lockedRows?.includes(from) && <span className="visually-hidden"> (fixed)</span>}</th>
                   {doc.stateOrder.map((to, j) => {
                     const key = `${from}->${to}`;
                     const isSel = selection?.kind === 'transition' && selection.from === from && selection.to === to;
+                    if (lockedRows?.includes(from)) {
+                      return <td key={to} className="numeric locked" title="This row is fixed in this exercise">{row[j] === 0 ? <span className="subtle">0</span> : formatProbability(row[j])}</td>;
+                    }
                     return (
                       <td key={to} className={isSel ? 'selected' : ''}>
                         <ProbabilityInput

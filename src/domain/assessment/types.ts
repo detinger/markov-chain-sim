@@ -23,7 +23,19 @@ export type Assertion =
   | { kind: 'transition'; from: string; to: string; value: number; tolerance: number }
   /** Keep a transition positive (prevents trivial "make everything absorbing" repairs). */
   | { kind: 'transition-positive'; from: string; to: string; why: string }
-  | { kind: 'numeric-answer'; key: string; label: string; target: NumericTarget; tolerance: number };
+  | { kind: 'numeric-answer'; key: string; label: string; target: NumericTarget; tolerance: number }
+  /** Rows listed in the challenge's `lockedRows` must equal the starter exactly. */
+  | { kind: 'rows-locked' }
+  /** min ≤ P[from][to] ≤ max — a scenario constraint on an editable row. */
+  | { kind: 'transition-range'; from: string; to: string; min: number; max: number; why: string }
+  /** An exact model metric must meet a threshold; feedback compares it with the starter (baseline). */
+  | { kind: 'metric'; metric: ModelMetric; op: 'at-most' | 'at-least'; value: number; why: string };
+
+/** Exact metrics from μ₀ used by comparison-style challenges. */
+export type ModelMetric =
+  | { type: 'mean-hit'; targets: StateId[]; label: string; unit: string }
+  | { type: 'hit-by'; targets: StateId[]; horizon: number; label: string }
+  | { type: 'absorb'; state: StateId; label: string };
 
 export interface ChallengeDefinition {
   id: string;

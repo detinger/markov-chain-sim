@@ -36,6 +36,8 @@ export type Command =
   | { type: 'setInitial'; stateId: StateId; probability: number }
   | { type: 'setSingleStart'; stateId: StateId }
   | { type: 'normalizeRow'; stateId: StateId }
+  /** Replace a whole row at once (row-preserving parameter edits; one undo step). */
+  | { type: 'setRow'; stateId: StateId; row: number[] }
   | { type: 'makeAbsorbing'; stateId: StateId }
   | { type: 'distributeEqually'; stateId: StateId }
   | { type: 'normalizeInitial' }
@@ -104,6 +106,10 @@ export function applyCommand(doc: ChainDocumentV1, cmd: Command): ChainDocumentV
       next = { ...doc, transitions: replaceRow(doc, cmd.stateId, row.map((p) => p / sum)) };
       break;
     }
+    case 'setRow':
+      if (cmd.row.length !== doc.stateOrder.length || cmd.row.some((p) => !(p >= 0 && p <= 1))) return doc;
+      next = { ...doc, transitions: replaceRow(doc, cmd.stateId, cmd.row) };
+      break;
     case 'makeAbsorbing':
       next = { ...doc, transitions: replaceRow(doc, cmd.stateId, doc.stateOrder.map((id) => (id === cmd.stateId ? 1 : 0))) };
       break;
