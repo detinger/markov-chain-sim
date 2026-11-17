@@ -95,7 +95,8 @@ export function simulateTrajectory(chain: CompiledChain, config: TrajectoryConfi
 }
 
 const FORMULA_START = /^[=+\-@\t\r]/;
-function csvCell(v: string | number): string {
+/** CSV cell with quoting and spreadsheet-formula neutralization for text. */
+export function csvCell(v: string | number): string {
   let s = String(v);
   if (typeof v === 'string' && FORMULA_START.test(s)) s = `'${s}`; // neutralize spreadsheet formulas
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;

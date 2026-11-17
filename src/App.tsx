@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
-  Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
+  BarChart3, FlaskConical, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
 } from 'lucide-react';
 import GraphEditor from './components/GraphEditor';
 import MatrixEditor, { InitialDistributionEditor } from './components/MatrixEditor';
@@ -23,6 +23,9 @@ import {
   type ChainDocumentV1, type StateId,
 } from './domain/markov';
 import { exampleToDocument } from './lib/examples';
+import ExperimentsPage from './features/experiments/ExperimentsPage';
+import AnalysisPage from './features/analysis/AnalysisPage';
+import { useExperiment } from './features/experiments/useExperiment';
 
 type InspectorTab = 'matrix' | 'state' | 'validate' | 'sequence' | 'explain';
 type Pending = { kind: 'replace'; title: string; next: () => ChainDocumentV1 } | { kind: 'delete'; id: StateId } | null;
@@ -46,6 +49,8 @@ export default function App() {
   const [pending, setPending] = useState<Pending>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const sim = useSimulation(doc, chain);
+  const experiment = useExperiment();
+  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments'>('modeler');
   const reducedMotion = usePrefersReducedMotion();
   const [lowerOpen, setLowerOpen] = useState(true);
   const [lowerMode, setLowerMode] = useState<'exact' | 'sample'>('exact');
@@ -171,7 +176,16 @@ export default function App() {
             </div>
           </div>
           <div className="nav-group">Workspace</div>
-          <button className="nav-link" aria-current="page" title="Modeler"><Network /><span className="nav-text">Modeler</span><span className="visually-hidden">Modeler</span></button>
+          {([
+            ['modeler', 'Modeler', <Network key="i" />],
+            ['analysis', 'Analysis', <BarChart3 key="i" />],
+            ['experiments', 'Experiments', <FlaskConical key="i" />],
+          ] as const).map(([id, text, icon]) => (
+            <button key={id} className="nav-link" aria-current={page === id ? 'page' : undefined} title={text} onClick={() => setPage(id)}>
+              {icon}<span className="nav-text">{text}</span><span className="visually-hidden">{text}</span>
+              {id === 'experiments' && (experiment.status === 'running' || experiment.status === 'cancelling') && <span className="badge badge-accent nav-text">Running</span>}
+            </button>
+          ))}
           <div className="nav-group">Learn</div>
           <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span><span className="visually-hidden">Examples</span></button>
           <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span><span className="visually-hidden">Theory</span></button>
@@ -194,6 +208,9 @@ export default function App() {
         </nav>
 
         <div className="main">
+          {page === 'analysis' && <main id="main" className="page-scroll" tabIndex={-1}><AnalysisPage doc={doc} chain={analysisChain} stale={stale} theme={resolved} /></main>}
+          {page === 'experiments' && <main id="main" className="page-scroll" tabIndex={-1}><ExperimentsPage doc={doc} chain={chain} experiment={experiment} theme={resolved} /></main>}
+          {page === 'modeler' && <>
           <header className="toolbar">
             <div className="toolbar-group" style={{ minWidth: 0 }}>
               <label htmlFor="model-title" className="visually-hidden">Model name</label>
@@ -334,6 +351,7 @@ export default function App() {
               </div>
             </aside>
           </main>
+          </>}
         </div>
       </div>
 

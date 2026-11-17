@@ -538,10 +538,12 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phases 1 and 3. **Owners:** numerical core, experiments, analytics.
 
-- [ ] Complete structural/class explorer, absorption/visits/time results, hitting/first-return distinctions, and numerical diagnostics.
-- [ ] Run independent replications in a cancellable worker with bounded memory and deterministic streams.
-- [ ] Implement endpoints, visits, first hits, censoring, Wilson intervals, and independent-replication mean intervals.
-- [ ] Add analytic overlays, CSV/run-bundle export, and results provenance.
+> Progress (2026-11-17): see ADR 0003. 13 Vitest tests for intervals/engine (batch equivalence, M11 censoring, agreement with exact under predeclared seeds). Worker verified on dev and production preview builds (scripted headless Chrome). Levels 3–4 lessons are blocked on the Phase 2 lesson system and remain open.
+
+- [x] Complete structural/class explorer, absorption/visits/time results, hitting/first-return distinctions, and numerical diagnostics.
+- [x] Run independent replications in a cancellable worker with bounded memory and deterministic streams.
+- [x] Implement endpoints, visits, first hits, censoring, Wilson intervals, and independent-replication mean intervals.
+- [x] Add analytic overlays, CSV/run-bundle export, and results provenance.
 - [ ] Deliver learning levels 3–4 and corresponding fixtures.
 
 **Exit gate:** analytic fixtures in §9 pass; estimates agree with exact models under a documented statistical testing protocol; incomplete/censored/ill-conditioned outputs are explicit; UI remains responsive during the measured workload.
