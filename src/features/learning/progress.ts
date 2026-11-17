@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CHALLENGE_BY_ID } from '../../data/challenges';
 import { LESSON_BY_ID } from '../../data/lessons';
+import { isClearingData } from '../../app/clearData';
 import { emptyProgress, migrateProgress, type LearningProgress } from './migrateProgress';
 
 const KEY = 'markov-simulator:progress:v1';
@@ -30,6 +31,7 @@ export function useProgress() {
   const [saveFailed, setSaveFailed] = useState(false);
 
   useEffect(() => {
+    if (isClearingData()) return;
     try { localStorage.setItem(KEY, JSON.stringify({ ...progress, resetNotes: undefined })); setSaveFailed(false); }
     catch { setSaveFailed(true); }
   }, [progress]);

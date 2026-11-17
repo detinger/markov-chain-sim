@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { applyCommand, compileChain, createEmptyDocument, importDocument, exportDocument, type Command } from '../domain/markov';
 import type { ChainDocumentV1, CompiledChain } from '../domain/markov/types';
 import { exampleToDocument } from '../lib/examples';
+import { isClearingData } from './clearData';
 
 const AUTOSAVE_KEY = 'markov-simulator:autosave:v1';
 const HISTORY_LIMIT = 200;
@@ -70,6 +71,7 @@ export function useProject() {
     setSaveStatus('saving');
     const t = setTimeout(() => {
       try {
+        if (isClearingData()) return;
         localStorage.setItem(AUTOSAVE_KEY, exportDocument(doc));
         setSaveStatus('saved');
       } catch {

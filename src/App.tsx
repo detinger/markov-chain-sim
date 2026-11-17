@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
-  BarChart3, FlaskConical, GitCompare, GraduationCap, Trophy, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
+  BarChart3, FlaskConical, GitCompare, GraduationCap, Home, Trash2, Trophy, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
 } from 'lucide-react';
 import GraphEditor from './components/GraphEditor';
 import MatrixEditor, { InitialDistributionEditor } from './components/MatrixEditor';
@@ -30,6 +30,8 @@ import LearnPage from './features/learning/LearnPage';
 import ChallengesPage from './features/challenges/ChallengesPage';
 import ComparePage from './features/comparison/ComparePage';
 import { useBaseline } from './features/comparison/baseline';
+import HomePage, { type HomeTarget } from './features/home/HomePage';
+import { clearAllAppData, storedKeys } from './app/clearData';
 import { useProgress } from './features/learning/progress';
 import { ISSUE_LESSONS, LESSONS, LESSON_BY_ID } from './data/lessons';
 import { snapshotToDocument } from './domain/assessment';
@@ -75,7 +77,8 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const sim = useSimulation(doc, chain);
   const experiment = useExperiment();
-  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments' | 'compare' | 'learn' | 'challenges'>('modeler');
+  const [page, setPage] = useState<'home' | 'modeler' | 'analysis' | 'experiments' | 'compare' | 'learn' | 'challenges'>('home');
+  const [clearOpen, setClearOpen] = useState(false);
   const baseline = useBaseline();
   const progress = useProgress();
   const [lessonId, setLessonId] = useState(LESSONS[0].id);
@@ -267,6 +270,12 @@ export default function App() {
               <div className="brand-tag">Model · Simulate · Understand</div>
             </div>
           </div>
+          <button className="nav-link" aria-current={page === 'home' ? 'page' : undefined} onClick={() => setPage('home')} title="Home"><Home /><span className="nav-text">Home</span></button>
+          <div className="nav-group">Learn</div>
+          <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span></button>
+          <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span></button>
+          <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span></button>
+          <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span></button>
           <div className="nav-group">Workspace</div>
           {([
             ['modeler', 'Modeler', <Network key="i" />],
@@ -279,11 +288,6 @@ export default function App() {
               {id === 'experiments' && (experiment.status === 'running' || experiment.status === 'cancelling') && <span className="badge badge-accent nav-text">Running</span>}
             </button>
           ))}
-          <div className="nav-group">Learn</div>
-          <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span></button>
-          <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span></button>
-          <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span></button>
-          <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span></button>
           <div className="nav-spacer" />
           <div className="nav-theme">
             <div className="segmented" role="group" aria-label="Theme">
@@ -303,6 +307,13 @@ export default function App() {
         </nav>
 
         <div className="main">
+          {page === 'home' && <main id="main" className="page-scroll" tabIndex={-1}><HomePage doc={doc} valid={!!chain} progress={progress} hasBaseline={!!baseline.baseline}
+            onGo={(t: HomeTarget, lesson?: string) => {
+              if (t === 'theory' || t === 'examples') setDialog(t);
+              else { if (t === 'learn' && lesson) setLessonId(lesson); setPage(t); }
+            }}
+            onDownloadModel={() => { download(fileName(doc), exportDocument(doc)); toast('success', 'Project file downloaded.'); }}
+            onClearAll={() => setClearOpen(true)} /></main>}
           {page === 'analysis' && <main id="main" className="page-scroll" tabIndex={-1}><AnalysisPage doc={doc} chain={analysisChain} stale={stale} theme={resolved} /></main>}
           {page === 'learn' && <main id="main" className="page-scroll" tabIndex={-1}><LearnPage lessonId={lessonId} onSelectLesson={(id) => { setLessonId(id); document.getElementById('main')?.scrollTo(0, 0); }} progress={progress}
             onOpenChallenge={(id) => { setChallengeId(id); setPage('challenges'); }}
@@ -491,7 +502,7 @@ export default function App() {
 
       {dialog === 'theory' && <TheoryModal onClose={() => setDialog(null)} />}
       {dialog === 'examples' && (
-        <ExamplesDialog onClose={() => setDialog(null)} onOpenLesson={(id) => { setDialog(null); openLesson(id); }} onOpen={(key) => { setDialog(null); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} />
+        <ExamplesDialog onClose={() => setDialog(null)} onOpenLesson={(id) => { setDialog(null); openLesson(id); }} onOpen={(key) => { setDialog(null); setPage('modeler'); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} />
       )}
 
       {pending?.kind === 'replace' && (
@@ -523,6 +534,26 @@ export default function App() {
         );
       })()}
 
+      {clearOpen && (
+        <Dialog size="sm" title="Clear all data on this device?" onClose={() => setClearOpen(false)}
+          footer={<>
+            <button className="btn" onClick={() => setClearOpen(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={clearAllAppData}><Trash2 size={16} aria-hidden /> Clear everything</button>
+          </>}>
+          <p>This permanently removes everything the app has saved in this browser and reloads the page:</p>
+          <ul>
+            <li>your current model and its undo history,</li>
+            <li>the comparison baseline,</li>
+            <li>lesson and challenge progress,</li>
+            <li>preferences (theme and panel layout).</li>
+          </ul>
+          <p className="hint">{storedKeys().length} saved item{storedKeys().length === 1 ? '' : 's'} found. This cannot be undone — download anything you want to keep first.</p>
+          <div className="row">
+            <button className="btn btn-sm" onClick={() => download(fileName(doc), exportDocument(doc))}><Download size={14} aria-hidden /> Download current model</button>
+            <button className="btn btn-sm" onClick={() => download('markov-learning-progress.json', progress.exportJson())}><Download size={14} aria-hidden /> Export learning progress</button>
+          </div>
+        </Dialog>
+      )}
       <Toasts toasts={toasts} />
     </>
   );
