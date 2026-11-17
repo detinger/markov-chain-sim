@@ -135,6 +135,8 @@ export interface ExampleMeta {
   description: string;
   stepLabel?: string;
   difficulty: 'Intro' | 'Intermediate' | 'Advanced';
+  /** Related lesson for annotated examples. */
+  lesson?: string;
   /** Starting state for μ₀. Defaults to the first state (the pre-upgrade chart behavior). */
   start?: string;
   assumptions: string[];
@@ -142,23 +144,27 @@ export interface ExampleMeta {
 
 export const EXAMPLE_META: Record<string, ExampleMeta> = {
   weather: {
+    lesson: 'foundations.rows',
     description: 'Two weather states. Each row says what tomorrow looks like given today.',
     stepLabel: 'day',
     difficulty: 'Intro',
     assumptions: ['Tomorrow depends only on today, not on earlier days.', 'Illustrative probabilities, not a forecast.'],
   },
   stockMarket: {
+    lesson: 'longrun.stationary',
     description: 'Three market regimes with persistent bull and bear phases.',
     stepLabel: 'week',
     difficulty: 'Intro',
     assumptions: ['Illustrative regime probabilities, not financial data or advice.'],
   },
   pagerank: {
+    lesson: 'longrun.stationary',
     description: 'A random surfer follows links between four pages; the stationary vector ranks them.',
     difficulty: 'Intermediate',
     assumptions: ['No damping/teleport term, unlike production PageRank.'],
   },
   epidemic: {
+    lesson: 'absorption.outcomes',
     subtitle: 'Simplified individual-status Markov model',
     description: 'One person moves from Susceptible to Infected to Recovered with fixed per-step probabilities.',
     stepLabel: 'day',
@@ -170,6 +176,7 @@ export const EXAMPLE_META: Record<string, ExampleMeta> = {
     ],
   },
   gambler: {
+    lesson: 'absorption.outcomes',
     description: 'A risk/reward story with two absorbing outcomes: Broke & Busted (ruin) and Walk Away Rich.',
     stepLabel: 'round',
     difficulty: 'Intermediate',
@@ -178,6 +185,7 @@ export const EXAMPLE_META: Record<string, ExampleMeta> = {
     assumptions: ['Educational probabilities, not real gambling odds or advice.'],
   },
   socialMedia: {
+    lesson: 'absorption.first-passage',
     description: 'Seven engagement states; closing the app is the only absorbing exit.',
     stepLabel: 'minute',
     difficulty: 'Advanced',

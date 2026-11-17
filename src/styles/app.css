@@ -317,11 +317,59 @@ kbd { border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 
 .kpi-unit { font-size: 12px; font-weight: 500; color: var(--text-subtle); letter-spacing: 0; }
 .nav-link .badge { margin-left: auto; }
 
+/* ── Learning ──────────────────────────────────────────────────── */
+.reference-layout { display: grid; grid-template-columns: var(--reference-index-width) minmax(0, 1fr); gap: 24px; align-items: start; }
+.lesson-index { position: sticky; top: 0; padding: 14px; }
+.lesson-index ul { list-style: none; margin: 0 0 4px; padding: 0; }
+.lesson-link { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; background: none; border-radius: var(--radius-sm); font: inherit; font-size: 13px; color: var(--text-muted); cursor: pointer; text-align: left; }
+.lesson-link:hover { background: var(--bg-hover); color: var(--text); }
+.lesson-link[aria-current="page"] { background: var(--primary-soft); color: var(--primary); }
+.lesson-link .done { color: var(--success); flex: none; }
+.lesson-link .dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; }
+.lesson-article { max-width: 76ch; min-width: 0; }
+.lesson-section { margin-bottom: 18px; }
+.lesson-section p { max-width: 76ch; }
+.lesson-figure { margin: 0 0 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elevated); padding: 12px; }
+.lesson-figure figcaption { font-size: 13px; }
+.lesson-footer { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+.demo-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 8px; }
+.check { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); }
+.check-legend { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; padding: 0; }
+.check-legend svg { color: var(--primary); }
+.choice { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+.choice:hover { background: var(--bg-hover); }
+.choice.selected { border-color: var(--primary); background: var(--primary-soft); }
+.choice input { accent-color: var(--primary); }
+.check > .btn { align-self: flex-start; }
+.link-button { border: 0; background: none; padding: 0 4px; color: var(--primary); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.mini-chain { display: block; margin: 0 auto; }
+.mini-edge { fill: none; stroke: var(--markov-stroke); stroke-width: 2; }
+.mini-arrowhead { fill: var(--markov-stroke); }
+.mini-label { font-size: 13px; text-anchor: middle; fill: var(--text); font-variant-numeric: tabular-nums; paint-order: stroke; stroke: var(--bg-elevated); stroke-width: 4px; }
+.mini-node { fill: var(--markov-fill); stroke: var(--markov-stroke); stroke-width: 2; }
+.mini-node.absorbing { stroke-width: 4; }
+.mini-node.active { stroke: var(--markov-active); stroke-width: 4; }
+.mini-node-label { font-size: 12px; font-weight: 600; text-anchor: middle; fill: var(--markov-label); }
+.challenge-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.challenge-side { position: sticky; top: 0; }
+.challenge-card { display: block; width: 100%; }
+.hints { margin: 0 0 10px; padding-left: 20px; font-size: 13px; }
+.hints li { margin-bottom: 6px; }
+.feedback-part { margin-top: 12px; font-size: 13px; }
+.feedback-part h4 { font-size: 12px; text-transform: none; color: var(--text-muted); margin-bottom: 4px; }
+.feedback-part ul { margin: 0; padding-left: 18px; }
+.feedback-part li { margin-bottom: 4px; }
+
 /* ── Responsive (STYLE.md §5) ─────────────────────────────────── */
 @media (max-width: 1100px) {
   .lower-panel-body, .sim-body { grid-template-columns: minmax(0, 1fr); }
-  .config-results { grid-template-columns: minmax(0, 1fr); }
+  .config-results, .challenge-layout { grid-template-columns: minmax(0, 1fr); }
+  .challenge-side { position: static; }
   .config-column { position: static; }
+}
+@media (max-width: 900px) {
+  .reference-layout, .demo-grid { grid-template-columns: minmax(0, 1fr); }
+  .lesson-index { position: static; }
 }
 @media (max-width: 820px) {
   .shell { flex-direction: column; height: auto; min-height: 100vh; }

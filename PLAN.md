@@ -514,10 +514,12 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phase 1. **Owner:** educational experience with numerical review.
 
-- [ ] Deliver levels 1–2, theory index, contextual state/transition explanations, and annotated examples.
-- [ ] Implement issue navigation, explicit repairs, validation severity layers, and lesson links.
-- [ ] Release first four challenges from §5 with deterministic assessment and progressive hints.
-- [ ] Add local learning progress and safe reset/export.
+> Progress (2026-11-17): see ADR 0004. 9 lessons (levels 1–4), 4 challenges, 12 tests for fixtures/grading. Exit-gate walkthrough (complete a two-state lesson, solve the row-repair challenge via the UI) verified with scripted headless Chrome; no novice user study yet. The Theory quick reference remains a dialog; the lesson index serves as the theory index.
+
+- [x] Deliver levels 1–2, theory index, contextual state/transition explanations, and annotated examples.
+- [x] Implement issue navigation, explicit repairs, validation severity layers, and lesson links.
+- [x] Release first four challenges from §5 with deterministic assessment and progressive hints.
+- [x] Add local learning progress and safe reset/export.
 
 **Exit gate:** a student completes a two-state lesson and a row-repair challenge without instructor intervention; feedback identifies consequences; every lesson fixture is valid and all answers are checked.
 
@@ -538,13 +540,13 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Dependencies:** Phases 1 and 3. **Owners:** numerical core, experiments, analytics.
 
-> Progress (2026-11-17): see ADR 0003. 13 Vitest tests for intervals/engine (batch equivalence, M11 censoring, agreement with exact under predeclared seeds). Worker verified on dev and production preview builds (scripted headless Chrome). Levels 3–4 lessons are blocked on the Phase 2 lesson system and remain open.
+> Progress (2026-11-17): see ADR 0003. 13 Vitest tests for intervals/engine (batch equivalence, M11 censoring, agreement with exact under predeclared seeds). Worker verified on dev and production preview builds (scripted headless Chrome). Levels 3–4 lessons delivered with Phase 2.
 
 - [x] Complete structural/class explorer, absorption/visits/time results, hitting/first-return distinctions, and numerical diagnostics.
 - [x] Run independent replications in a cancellable worker with bounded memory and deterministic streams.
 - [x] Implement endpoints, visits, first hits, censoring, Wilson intervals, and independent-replication mean intervals.
 - [x] Add analytic overlays, CSV/run-bundle export, and results provenance.
-- [ ] Deliver learning levels 3–4 and corresponding fixtures.
+- [x] Deliver learning levels 3–4 and corresponding fixtures.
 
 **Exit gate:** analytic fixtures in §9 pass; estimates agree with exact models under a documented statistical testing protocol; incomplete/censored/ill-conditioned outputs are explicit; UI remains responsive during the measured workload.
 

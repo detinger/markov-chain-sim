@@ -1,5 +1,6 @@
 import { EXAMPLES, EXAMPLE_META } from '../lib/examples';
 import { Dialog } from './ui';
+import { LESSON_BY_ID } from '../data/lessons';
 
 function Preview({ k }: { k: string }) {
   const ex = EXAMPLES[k];
@@ -29,7 +30,7 @@ function Preview({ k }: { k: string }) {
   );
 }
 
-export default function ExamplesDialog({ onOpen, onClose }: { onOpen: (key: string) => void; onClose: () => void }) {
+export default function ExamplesDialog({ onOpen, onClose, onOpenLesson }: { onOpen: (key: string) => void; onClose: () => void; onOpenLesson?: (id: string) => void }) {
   return (
     <Dialog title="Examples" onClose={onClose}>
       <p className="muted">Opening an example replaces the current model. You can undo to get it back, or download it first.</p>
@@ -50,7 +51,10 @@ export default function ExamplesDialog({ onOpen, onClose }: { onOpen: (key: stri
                 {meta?.assumptions.length ? (
                   <ul className="hint" style={{ margin: 0, paddingLeft: 16 }}>{meta.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
                 ) : null}
-                <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => onOpen(key)}>Open example</button>
+                <div className="row" style={{ marginTop: 4 }}>
+                  <button className="btn btn-primary btn-sm" onClick={() => onOpen(key)}>Open example</button>
+                  {meta?.lesson && onOpenLesson && <button className="btn btn-ghost btn-sm" onClick={() => onOpenLesson(meta.lesson!)}>Lesson: {LESSON_BY_ID[meta.lesson].title}</button>}
+                </div>
               </div>
             </article>
           );

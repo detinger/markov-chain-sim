@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MousePointerClick, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, MousePointerClick, Plus, Trash2 } from 'lucide-react';
 import {
   compensatedSum, EPS_ROW, formatProbability, formatTotal, rowOf,
   type ChainDocumentV1, type Command, type StateId, type StructureResult,
@@ -15,9 +15,21 @@ interface Props {
   onSelect: (s: Selection) => void;
   onRequestDelete: (id: StateId) => void;
   onClearDraft: () => void;
+  onOpenLesson?: (id: string, title: string) => void;
 }
 
-export default function StateInspector({ doc, selection, structure, dispatch, onSelect, onRequestDelete, onClearDraft }: Props) {
+const LESSON_TITLES: Record<string, string> = {
+  'foundations.rows': 'Transition probabilities and rows',
+  'longrun.classes': 'Communicating classes',
+  'absorption.outcomes': 'Absorbing states and eventual outcomes',
+};
+
+function RelatedLesson({ id, onOpen }: { id: string; onOpen?: (id: string, title: string) => void }) {
+  if (!onOpen) return null;
+  return <button className="btn btn-sm btn-ghost" style={{ marginTop: 12 }} onClick={() => onOpen(id, LESSON_TITLES[id])}><BookOpen size={14} aria-hidden /> Related lesson: {LESSON_TITLES[id]}</button>;
+}
+
+export default function StateInspector({ doc, selection, structure, dispatch, onSelect, onRequestDelete, onClearDraft, onOpenLesson }: Props) {
   const label = (id: StateId) => doc.states.find((s) => s.id === id)?.label || 'Unnamed';
   const [newTarget, setNewTarget] = useState<StateId>('');
 
@@ -63,6 +75,7 @@ export default function StateInspector({ doc, selection, structure, dispatch, on
           {p > 0 && <button className="btn btn-sm btn-danger" onClick={() => dispatch({ type: 'setProbability', from, to, probability: 0 })}><Trash2 size={14} /> Remove transition</button>}
         </div>
         <p className="hint" style={{ marginTop: 12 }}>Common mistake: reading the matrix by column. Probabilities out of a state are in its <em>row</em>.</p>
+        <RelatedLesson id="foundations.rows" onOpen={onOpenLesson} />
       </div>
     );
   }
@@ -134,6 +147,7 @@ export default function StateInspector({ doc, selection, structure, dispatch, on
         <button className="btn btn-sm" onClick={() => dispatch({ type: 'makeAbsorbing', stateId: id })} disabled={absorbing}>Make absorbing</button>
         <button className="btn btn-sm btn-danger" onClick={() => onRequestDelete(id)}><Trash2 size={14} /> Delete state</button>
       </div>
+      <RelatedLesson id={absorbing ? 'absorption.outcomes' : cls ? 'longrun.classes' : 'foundations.rows'} onOpen={onOpenLesson} />
     </div>
   );
 }

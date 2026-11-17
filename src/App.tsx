@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ChevronsLeft, ChevronsRight, Cloud, CloudOff, Download, FilePlus2,
-  BarChart3, FlaskConical, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
+  BarChart3, FlaskConical, GraduationCap, Trophy, Grid3x3, Info, Library, ListChecks, Loader2, Monitor, Moon, Network, Play, Plus, Redo2, Route, Sun, Undo2, Upload,
 } from 'lucide-react';
 import GraphEditor from './components/GraphEditor';
 import MatrixEditor, { InitialDistributionEditor } from './components/MatrixEditor';
@@ -19,13 +19,18 @@ import { useProject } from './app/useProject';
 import { useTheme, type ThemePreference } from './app/theme';
 import type { Selection } from './app/selection';
 import {
-  classifyChain, createEmptyDocument, deletionImpact, exportDocument, importDocument, newId, rowOf, validateDocument,
+  classifyChain, createEmptyDocument, deletionImpact, structuralIssues, exportDocument, importDocument, newId, rowOf, validateDocument,
   type ChainDocumentV1, type StateId,
 } from './domain/markov';
 import { exampleToDocument } from './lib/examples';
 import ExperimentsPage from './features/experiments/ExperimentsPage';
 import AnalysisPage from './features/analysis/AnalysisPage';
 import { useExperiment } from './features/experiments/useExperiment';
+import LearnPage from './features/learning/LearnPage';
+import ChallengesPage from './features/challenges/ChallengesPage';
+import { useProgress } from './features/learning/progress';
+import { ISSUE_LESSONS, LESSONS, LESSON_BY_ID } from './data/lessons';
+import { snapshotToDocument } from './domain/assessment';
 
 type InspectorTab = 'matrix' | 'state' | 'validate' | 'sequence' | 'explain';
 type Pending = { kind: 'replace'; title: string; next: () => ChainDocumentV1 } | { kind: 'delete'; id: StateId } | null;
@@ -50,7 +55,15 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const sim = useSimulation(doc, chain);
   const experiment = useExperiment();
-  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments'>('modeler');
+  const [page, setPage] = useState<'modeler' | 'analysis' | 'experiments' | 'learn' | 'challenges'>('modeler');
+  const progress = useProgress();
+  const [lessonId, setLessonId] = useState(LESSONS[0].id);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const openLesson = useCallback((id: string) => { setLessonId(id); setPage('learn'); }, []);
+  const lessonLink = useCallback((code: string) => {
+    const id = ISSUE_LESSONS[code];
+    return id ? { title: LESSON_BY_ID[id].title, open: () => openLesson(id) } : null;
+  }, [openLesson]);
   const reducedMotion = usePrefersReducedMotion();
   const [lowerOpen, setLowerOpen] = useState(true);
   const [lowerMode, setLowerMode] = useState<'exact' | 'sample'>('exact');
@@ -79,6 +92,9 @@ export default function App() {
     const s = classifyChain(chain);
     return s.status === 'ok' ? s.result : null;
   }, [chain]);
+
+  // Validation layers 3–4: structure facts, capability warnings, recommendations (never blocking).
+  const allIssues = useMemo(() => (chain && structure ? [...issues, ...structuralIssues(doc, chain, structure)] : issues), [issues, chain, structure, doc]);
 
   const flags = useMemo(() => {
     const invalid = new Set(issues.flatMap((i) => (i.severity === 'error' && i.target.kind === 'row' ? [i.target.stateId] : [])));
@@ -187,6 +203,8 @@ export default function App() {
             </button>
           ))}
           <div className="nav-group">Learn</div>
+          <button className="nav-link" aria-current={page === 'learn' ? 'page' : undefined} onClick={() => setPage('learn')} title="Lessons"><GraduationCap /><span className="nav-text">Lessons</span><span className="visually-hidden">Lessons</span></button>
+          <button className="nav-link" aria-current={page === 'challenges' ? 'page' : undefined} onClick={() => setPage('challenges')} title="Challenges"><Trophy /><span className="nav-text">Challenges</span><span className="visually-hidden">Challenges</span></button>
           <button className="nav-link" onClick={() => setDialog('examples')} title="Examples"><Library /><span className="nav-text">Examples</span><span className="visually-hidden">Examples</span></button>
           <button className="nav-link" onClick={() => setDialog('theory')} title="Theory"><BookOpen /><span className="nav-text">Theory</span><span className="visually-hidden">Theory</span></button>
           <div className="nav-spacer" />
@@ -209,6 +227,10 @@ export default function App() {
 
         <div className="main">
           {page === 'analysis' && <main id="main" className="page-scroll" tabIndex={-1}><AnalysisPage doc={doc} chain={analysisChain} stale={stale} theme={resolved} /></main>}
+          {page === 'learn' && <main id="main" className="page-scroll" tabIndex={-1}><LearnPage lessonId={lessonId} onSelectLesson={(id) => { setLessonId(id); document.getElementById('main')?.scrollTo(0, 0); }} progress={progress}
+            onOpenChallenge={(id) => { setChallengeId(id); setPage('challenges'); }}
+            onOpenInModeler={(snap) => { setPage('modeler'); replaceProject(`Open “${snap.title}” in the modeler`, () => snapshotToDocument(snap)); }} /></main>}
+          {page === 'challenges' && <main id="main" className="page-scroll" tabIndex={-1}><ChallengesPage challengeId={challengeId} onSelect={setChallengeId} onOpenLesson={openLesson} progress={progress} /></main>}
           {page === 'experiments' && <main id="main" className="page-scroll" tabIndex={-1}><ExperimentsPage doc={doc} chain={chain} experiment={experiment} theme={resolved} /></main>}
           {page === 'modeler' && <>
           <header className="toolbar">
@@ -330,13 +352,22 @@ export default function App() {
                       <div className="section-head"><h3>Starting distribution μ₀</h3></div>
                       <InitialDistributionEditor key={doc.id} doc={doc} dispatch={dispatch} />
                     </div>
+                    <div className="section">
+                      <label className="field" style={{ maxWidth: 260 }}>
+                        <span className="field-label">One step means</span>
+                        <input className="input input-sm" key={`${doc.id}-step`} defaultValue={doc.metadata.stepLabel ?? ''} placeholder="e.g. day, round, minute"
+                          onBlur={(e) => e.target.value.trim() !== (doc.metadata.stepLabel ?? '') && dispatch({ type: 'setStepLabel', stepLabel: e.target.value.trim() })}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+                        <span className="hint">Used in charts and explanations. The mathematics only counts steps.</span>
+                      </label>
+                    </div>
                   </>
                 )}
                 {tab === 'state' && (
                   <StateInspector doc={doc} selection={selection} structure={structure} dispatch={dispatch} onSelect={(s) => setSelection(s)}
-                    onRequestDelete={(id) => setPending({ kind: 'delete', id })} onClearDraft={() => {}} />
+                    onRequestDelete={(id) => setPending({ kind: 'delete', id })} onClearDraft={() => {}} onOpenLesson={(id) => openLesson(id)} />
                 )}
-                {tab === 'validate' && <ValidationPanel issues={issues} dispatch={dispatch} onFocusIssue={(s, t) => {
+                {tab === 'validate' && <ValidationPanel issues={allIssues} lessonLink={lessonLink} dispatch={dispatch} onFocusIssue={(s, t) => {
                   select(s, t);
                   if (s?.kind === 'state') requestAnimationFrame(() => cellRefs.current[`${s.id}->${doc.stateOrder[0]}`]?.focus());
                   if (s?.kind === 'transition') requestAnimationFrame(() => cellRefs.current[`${s.from}->${s.to}`]?.focus());
@@ -357,7 +388,7 @@ export default function App() {
 
       {dialog === 'theory' && <TheoryModal onClose={() => setDialog(null)} />}
       {dialog === 'examples' && (
-        <ExamplesDialog onClose={() => setDialog(null)} onOpen={(key) => { setDialog(null); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} />
+        <ExamplesDialog onClose={() => setDialog(null)} onOpenLesson={(id) => { setDialog(null); openLesson(id); }} onOpen={(key) => { setDialog(null); replaceProject(`Open “${exampleToDocument(key).title}”`, () => exampleToDocument(key)); }} />
       )}
 
       {pending?.kind === 'replace' && (

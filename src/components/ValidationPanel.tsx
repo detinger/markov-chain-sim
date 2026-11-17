@@ -1,4 +1,4 @@
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Lightbulb } from 'lucide-react';
+import { AlertCircle, AlertTriangle, BookOpen, CheckCircle2, Info, Lightbulb } from 'lucide-react';
 import type { Command, RepairKind, ValidationIssue } from '../domain/markov';
 import type { Selection } from '../app/selection';
 
@@ -11,10 +11,12 @@ const REPAIR_LABEL: Record<RepairKind, string> = {
   'normalize-initial': 'Normalize starting distribution',
 };
 
-export default function ValidationPanel({ issues, onFocusIssue, dispatch }: {
+export default function ValidationPanel({ issues, onFocusIssue, dispatch, lessonLink }: {
   issues: ValidationIssue[];
   onFocusIssue: (s: Selection, tab: 'matrix') => void;
   dispatch: (c: Command) => void;
+  /** Contextual lesson for an issue code, if any. */
+  lessonLink?: (code: string) => { title: string; open: () => void } | null;
 }) {
   const errors = issues.filter((i) => i.severity === 'error').length;
   const order = { error: 0, warning: 1, recommendation: 2, info: 3 };
@@ -32,7 +34,7 @@ export default function ValidationPanel({ issues, onFocusIssue, dispatch }: {
   return (
     <div className="stack">
       {errors === 0 ? (
-        <div className="callout callout-success"><CheckCircle2 /><p>The model is valid: every row and the starting distribution total 1. Calculations are up to date.</p></div>
+        <div className="callout callout-success"><CheckCircle2 /><p>The model is valid: every row and the starting distribution total 1. Calculations are up to date.{issues.length ? ' The notes below describe properties of the chain; they are not errors.' : ''}</p></div>
       ) : (
         <div className="callout callout-error"><AlertCircle /><p>{errors} issue{errors > 1 ? 's' : ''} block new calculations. You can keep editing and saving; nothing is discarded.</p></div>
       )}
@@ -55,6 +57,10 @@ export default function ValidationPanel({ issues, onFocusIssue, dispatch }: {
                   if (t.kind === 'cell') onFocusIssue({ kind: 'transition', from: t.from, to: t.to }, 'matrix');
                 }}>Show in matrix</button>
               )}
+              {(() => {
+                const l = lessonLink?.(issue.code);
+                return l ? <button className="btn btn-sm btn-ghost" onClick={l.open}><BookOpen size={14} aria-hidden /> Learn: {l.title}</button> : null;
+              })()}
               {issue.repairs?.map((r) => (
                 <button key={r} className="btn btn-sm" onClick={() => repair(issue, r)} title="Undoable">{REPAIR_LABEL[r]}</button>
               ))}
