@@ -1,121 +1,76 @@
-import { useState, useEffect } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
+import { Handle, Position, type NodeProps, type Node } from '@xyflow/react';
 
-export default function CircleNode({ data }: { data: { label: string, onRename: (s: string) => void } }) {
+export type StateNodeData = {
+  label: string;
+  isStart: boolean;
+  startMass: number;
+  absorbing: boolean;
+  invalid: boolean;
+  unreachable: boolean;
+  color: string;
+  onRename: (label: string) => void;
+};
+
+export default function CircleNode({ data }: NodeProps<Node<StateNodeData>>) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(data.label);
 
-  useEffect(() => {
-    setName(data.label);
-  }, [data.label]);
+  useEffect(() => setName(data.label), [data.label]);
 
-  const handleBlur = () => {
+  const commit = () => {
     setIsEditing(false);
-    if (name.trim() !== '' && name !== data.label) {
-      data.onRename(name);
-    }
+    if (name.trim() !== '' && name !== data.label) data.onRename(name.trim());
+    else setName(data.label);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      setIsEditing(false);
-      if (name.trim() !== '' && name !== data.label) {
-        data.onRename(name);
-      }
-    }
-    if (e.key === 'Escape') {
-      setIsEditing(false);
-      setName(data.label);
-    }
+  const onInputKey = (e: KeyboardEvent) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') commit();
+    if (e.key === 'Escape') { setIsEditing(false); setName(data.label); }
   };
+
+  const desc = [
+    data.isStart ? `start probability ${data.startMass}` : null,
+    data.absorbing ? 'absorbing' : null,
+    data.invalid ? 'row needs repair' : null,
+    data.unreachable ? 'not reachable from the start' : null,
+  ].filter(Boolean).join(', ');
 
   return (
     <div
-      style={{
-        borderRadius: '50%',
-        width: 100,
-        height: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 'bold',
-        background: 'rgba(15, 23, 42, 1.0)',
-        color: '#f8fafc',
-        border: '4px solid var(--accent)',
-        boxShadow: '0 8px 15px -3px rgba(0, 0, 0, 0.4)',
-        padding: '10px',
-        textAlign: 'center',
-        fontSize: '13px',
-        position: 'relative'
+      className={`state-node${data.absorbing ? ' absorbing' : ''}${data.unreachable ? ' unreachable' : ''}`}
+      onDoubleClick={() => setIsEditing(true)}
+      onKeyDown={(e) => {
+        // Keyboard rename alternative to double-click (B03).
+        if (!isEditing && (e.key === 'F2' || e.key === 'Enter')) { e.preventDefault(); setIsEditing(true); }
       }}
+      title="Double-click or press Enter to rename. Drag the center to connect; drag the edge to move."
+      aria-label={`State ${data.label}${desc ? ` (${desc})` : ''}`}
     >
-      {/* 
-          IMPORTANT: The node itself is handled by ReactFlow for dragging. 
-          We only wrap the name in an editor.
-      */}
-      <div style={{ position: 'relative', zIndex: 10 }}>
-        {isEditing ? (
-          <input
-            autoFocus
-            className="nodrag"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            style={{
-              width: '70px',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '2px solid var(--accent)',
-              color: '#fff',
-              textAlign: 'center',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              outline: 'none'
-            }}
-          />
-        ) : (
-          <div 
-            onDoubleClick={() => setIsEditing(true)}
-            title="Double Click to rename"
-            style={{ 
-              userSelect: 'none',
-              cursor: 'text'
-            }}
-          >
-            {data.label}
-          </div>
-        )}
-      </div>
-
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          top: '50%',
-          left: '50%',
-          width: '1px',
-          height: '1px',
-          transform: 'translate(-50%, -50%)',
-          zIndex: -1
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Top}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          top: '50%',
-          left: '50%',
-          width: '1px',
-          height: '1px',
-          transform: 'translate(-50%, -50%)',
-          zIndex: -1
-        }}
-      />
+      <span className="state-swatch" style={{ background: data.color }} aria-hidden="true" />
+      {data.isStart && <span className="state-start" aria-hidden="true">{data.startMass === 1 ? 'Start →' : `Start ${data.startMass} →`}</span>}
+      {isEditing ? (
+        <input
+          autoFocus
+          className="state-rename nodrag"
+          value={name}
+          aria-label="State name"
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commit}
+          onKeyDown={onInputKey}
+        />
+      ) : (
+        <span className="state-label">{data.label || 'Unnamed'}</span>
+      )}
+      {(data.absorbing || data.invalid) && (
+        <span className="state-flags" aria-hidden="true">
+          {data.absorbing && <span className="state-flag">Absorbing</span>}
+          {data.invalid && <span className="state-flag error">Row ≠ 1</span>}
+        </span>
+      )}
+      <Handle type="target" position={Position.Top} className="state-target" isConnectableStart={false} />
+      {!isEditing && <Handle type="source" position={Position.Top} className="state-connect" aria-label={`Drag to connect from ${data.label}`} />}
     </div>
   );
 }

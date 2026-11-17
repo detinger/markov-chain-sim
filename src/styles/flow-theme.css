@@ -1,0 +1,79 @@
+/* React Flow theming, states, and arcs (STYLE.md §9, §14.1). Loaded after @xyflow/react's own CSS. */
+
+.react-flow {
+  --xy-background-color: var(--canvas-bg);
+  --xy-controls-button-background-color: var(--bg-elevated);
+  --xy-controls-button-background-color-hover: var(--bg-hover);
+  --xy-controls-button-color: var(--text);
+  --xy-controls-button-color-hover: var(--text);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: var(--shadow-sm);
+  --xy-edge-stroke: var(--markov-stroke);
+  --xy-edge-stroke-selected: var(--markov-selected);
+  --xy-connectionline-stroke: var(--markov-selected);
+  --xy-attribution-background-color: transparent;
+  background: var(--canvas-bg);
+}
+.react-flow__controls { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; z-index: var(--layer-canvas-controls); }
+.react-flow__controls-button { border-bottom: 1px solid var(--border); width: 28px; height: 28px; }
+.react-flow__controls-button svg { fill: currentColor; }
+.react-flow__attribution { font-size: 10px; color: var(--text-subtle); }
+.react-flow__attribution a { color: var(--text-subtle); }
+.react-flow__node { cursor: grab; }
+.react-flow__node.dragging { cursor: grabbing; }
+.react-flow__node:focus-visible { outline: none; }
+
+/* State body */
+.state-node {
+  width: 88px; height: 88px; border-radius: 50%;
+  display: grid; place-items: center; position: relative;
+  background: var(--markov-fill); color: var(--markov-label);
+  border: 2px solid var(--markov-stroke);
+  font-size: 12px; font-weight: 600; line-height: 1.2; text-align: center;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.state-node.absorbing { box-shadow: 0 0 0 3px var(--markov-fill), 0 0 0 5px var(--markov-stroke); }
+.react-flow__node.selected .state-node { border-color: var(--markov-selected); background: var(--markov-selected-soft); }
+.react-flow__node:focus-visible .state-node { outline: 2px solid var(--markov-focus); outline-offset: 6px; }
+.state-node.unreachable { border-style: dashed; }
+.state-label {
+  position: relative; z-index: 1; max-width: 72px; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  pointer-events: none; user-select: none; overflow-wrap: anywhere;
+}
+.state-rename { width: 76px; border: 0; border-bottom: 2px solid var(--primary); background: transparent; color: inherit; text-align: center; font: inherit; outline: none; position: relative; z-index: 3; }
+.state-start {
+  position: absolute; left: -8px; top: 50%; transform: translate(-100%, -50%);
+  font-size: 10px; font-weight: 650; color: var(--primary); background: var(--bg-elevated);
+  border: 1px solid var(--primary); border-radius: var(--radius-pill); padding: 0 6px; white-space: nowrap;
+}
+.state-flags { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; z-index: 2; }
+.state-flag { font-size: 10px; font-weight: 650; border-radius: var(--radius-pill); padding: 0 6px; white-space: nowrap; background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-muted); }
+.state-flag.error { border-color: var(--error); color: var(--error); background: var(--error-soft); }
+.state-swatch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 18px; height: 3px; border-radius: 2px; }
+
+/* Center drag-to-connect handle (B04): the inner disc starts connections, the outer ring drags. */
+.react-flow__handle.state-connect {
+  width: 44px; height: 44px; border-radius: 50%;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: transparent; border: 1px dashed transparent; z-index: 2; cursor: crosshair; min-width: 0; min-height: 0;
+}
+.state-node:hover .react-flow__handle.state-connect { border-color: var(--border-strong); }
+.react-flow__handle.state-target {
+  width: 88px; height: 88px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: transparent; border: 0; z-index: 0; pointer-events: none; min-width: 0; min-height: 0;
+}
+.react-flow.connecting .react-flow__handle.state-target { pointer-events: all; z-index: 4; }
+
+/* Arcs */
+.react-flow__edge-path { stroke: var(--markov-stroke); stroke-width: 2; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--markov-selected); stroke-width: 2.5; }
+.react-flow__edge.draft .react-flow__edge-path { stroke-dasharray: 5 4; stroke: var(--text-subtle); }
+.edge-label {
+  position: absolute; pointer-events: all; cursor: pointer;
+  font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap;
+  background: var(--bg-elevated); color: var(--text); border: 1px solid var(--border);
+  padding: 2px 4px; border-radius: var(--radius-local);
+}
+.edge-label.selected { border-color: var(--markov-selected); color: var(--markov-selected); background: var(--markov-selected-soft); }
+.edge-label.draft { border-style: dashed; color: var(--text-subtle); }

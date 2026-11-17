@@ -29,7 +29,8 @@ An interactive visualization and simulation tool for Markov Chains. Built with R
   * *Weather Model*: Simple 2-state introduction.
   * *Casino Heist*: A complex risk/reward model with absorbing "Ruin" and "Rich" states.
   * *The Doomscroll Trap*: A 7-state psychological model of social media engagement.
-  * *SIR Epidemic Model*: Standard epidemiological transition model.
+  * *SIR Epidemic Model*: Simplified individual-status Markov model (one person, fixed rates — not a population epidemic).
+  * Also included: *Stock Market* and *Mini PageRank*.
 
 ## 🛠 Tech Stack
 
@@ -38,7 +39,8 @@ An interactive visualization and simulation tool for Markov Chains. Built with R
 * **Graph Engine**: [@xyflow/react](https://reactflow.dev/)
 * **Charts**: [Recharts](https://recharts.org/)
 * **Icons**: [Lucide React](https://lucide.dev/)
-* **Styling**: Vanilla CSS with Glassmorphism and Modern Aesthetics
+* **Styling**: Vanilla CSS with design tokens (see `STYLE.md`), light/dark/system themes
+* **Tests**: [Vitest](https://vitest.dev/) for the pure math core in `src/domain/markov`
 
 ## 📦 Installation & Setup
 
@@ -71,14 +73,24 @@ Ensure you have [Node.js](https://nodejs.org/) installed on your system.
     npm run build
     ```
 
+5. **Run tests / typecheck**:
+
+    ```bash
+    npm test -- --run
+    npm run typecheck
+    ```
+
 ## 📖 How to Use
 
-1. **Add States**: Use the "+ Add State" button in the top header.
-2. **Connect**: Drag from the center of one state to another to create a transition.
-3. **Rename**: Double-click the text in a circle to rename that state.
-4. **Edit Probabilities**: Use the "Transition Matrix" on the right to input exact values.
-5. **Calculate Paths**: Click the state buttons in the "Sequence Probability Calculator" to see the odds of a specific chain of events.
-6. **Reset**: Use the "New Model" button to start a fresh canvas.
+1. **Add States**: Use the "+ Add State" button in the toolbar. A new state starts with a self-loop of 1 so every row stays valid.
+2. **Connect**: Drag from the center of one state to another (or use *State → Add transition*). The new arc is a dashed draft until you give it a probability.
+3. **Rename**: Double-click a state (or select it and press Enter).
+4. **Edit Probabilities**: Use the "Transition Matrix" in the inspector. Rows must total exactly 1; the *Validate* tab explains problems and offers undoable repairs.
+5. **Choose a start**: Set the starting distribution μ₀ under the matrix (a single state or a custom distribution).
+6. **Calculate Paths**: The *Sequence* tab computes joint or given-start path probabilities with a factor-by-factor breakdown.
+7. **Analyze**: The *Explain* tab shows communicating classes, periods, stationary distribution(s), and absorption probabilities.
+8. **Save**: Work autosaves on this device; use Export/Import for project files. Undo/redo with Ctrl/⌘+Z.
+9. **Reset**: Use the "New Model" button to start a fresh canvas (undoable).
 
 ---
 

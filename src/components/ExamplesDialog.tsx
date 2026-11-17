@@ -1,0 +1,61 @@
+import { EXAMPLES, EXAMPLE_META } from '../lib/examples';
+import { Dialog } from './ui';
+
+function Preview({ k }: { k: string }) {
+  const ex = EXAMPLES[k];
+  const xs = ex.nodes.map((n) => n.x);
+  const ys = ex.nodes.map((n) => n.y);
+  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const pad = 60;
+  const vb = `${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad + 50} ${maxY - minY + 2 * pad + 50}`;
+  const pos = new Map(ex.nodes.map((n) => [n.id, { x: n.x + 25, y: n.y + 25 }]));
+  return (
+    <svg className="example-preview" viewBox={vb} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      {ex.edges.filter((e) => e.source !== e.target).map((e) => {
+        const a = pos.get(e.source)!; const b = pos.get(e.target)!;
+        return <line key={e.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--border-strong)" strokeWidth={4} />;
+      })}
+      {ex.nodes.map((n) => {
+        const p = pos.get(n.id)!;
+        const absorbing = ex.edges.some((e) => e.source === n.id && e.target === n.id && e.probability === 1);
+        return (
+          <g key={n.id}>
+            {absorbing && <circle cx={p.x} cy={p.y} r={38} fill="none" stroke="var(--markov-stroke)" strokeWidth={3} />}
+            <circle cx={p.x} cy={p.y} r={30} fill="var(--markov-fill)" stroke="var(--markov-stroke)" strokeWidth={4} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+export default function ExamplesDialog({ onOpen, onClose }: { onOpen: (key: string) => void; onClose: () => void }) {
+  return (
+    <Dialog title="Examples" onClose={onClose}>
+      <p className="muted">Opening an example replaces the current model. You can undo to get it back, or download it first.</p>
+      <div className="card-grid">
+        {Object.entries(EXAMPLES).map(([key, ex]) => {
+          const meta = EXAMPLE_META[key];
+          return (
+            <article key={key} className="card example-card">
+              <Preview k={key} />
+              <div className="example-body">
+                <div className="row" style={{ justifyContent: 'space-between' }}>
+                  <h3>{ex.name}</h3>
+                  <span className="badge">{meta?.difficulty}</span>
+                </div>
+                {meta?.subtitle && <span className="hint">{meta.subtitle}</span>}
+                <p>{meta?.description}</p>
+                <p className="hint">{ex.nodes.length} states{meta?.stepLabel ? ` · 1 step = 1 ${meta.stepLabel}` : ''}</p>
+                {meta?.assumptions.length ? (
+                  <ul className="hint" style={{ margin: 0, paddingLeft: 16 }}>{meta.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
+                ) : null}
+                <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => onOpen(key)}>Open example</button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </Dialog>
+  );
+}

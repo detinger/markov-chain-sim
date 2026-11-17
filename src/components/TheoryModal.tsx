@@ -1,123 +1,64 @@
-import { X, BookOpen, IterationCcw, TrendingUp, Grid } from 'lucide-react';
+import { Grid, IterationCcw, Lock, TrendingUp } from 'lucide-react';
+import { Dialog } from './ui';
 
-interface TheoryModalProps {
-  onClose: () => void;
-}
-
-export default function TheoryModal({ onClose }: TheoryModalProps) {
+export default function TheoryModal({ onClose }: { onClose: () => void }) {
   return (
-    <div 
-      style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem'
-      }}
-      onClick={onClose}
-    >
-      <div 
-        style={{
-          background: 'var(--bg-primary, #0f172a)',
-          border: '1px solid var(--border-color, #334155)',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '800px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          position: 'relative'
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={{ 
-          position: 'sticky', top: 0, background: 'var(--bg-primary)', 
-          padding: '1.5rem', borderBottom: '1px solid var(--border-color)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 
-        }}>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f8fafc' }}>
-            <BookOpen size={24} color="var(--accent)" /> Markov Chains: Quick Reference
-          </h2>
-          <button 
-            onClick={onClose}
-            style={{ 
-              background: 'transparent', border: 'none', color: 'var(--text-secondary)', 
-              cursor: 'pointer', display: 'flex' 
-            }}
-          >
-            <X size={24} />
-          </button>
+    <Dialog title="Markov chains: quick reference" onClose={onClose}>
+      <section className="prose">
+        <h3>What is a Markov chain?</h3>
+        <p>
+          A Markov chain is a mathematical system that models transitions from one state to another according to certain probabilistic rules.
+          The defining characteristic of a Markov chain is the <strong>Markov property</strong>: <em>“The future depends only on the present, not on the past.”</em>{' '}
+          It does not matter how you arrived at your current state; the odds of where you go next are exactly the same.
+        </p>
+        <p className="hint">In this app, one step is a discrete index. An example may say what a step means (“day”, “round”), but a step is not inherently a unit of time.</p>
+      </section>
+
+      <div className="theory-grid">
+        <div className="card">
+          <h4><Grid size={18} aria-hidden /> States &amp; transitions</h4>
+          <p>
+            <strong>States (nodes):</strong> the distinct situations the system can be in (e.g. “Sunny” or “Rainy”).<br /><br />
+            <strong>Transitions (edges):</strong> the arrows connecting states. The number on the arrow is the <em>probability</em> of moving from the source to the target in the next step.
+            All outgoing probabilities from a single state must always sum to <strong>1</strong>.
+          </p>
         </div>
-
-        <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem', color: 'var(--text-primary)' }}>
-          
-          <section>
-            <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)' }}>
-              What is a Markov Chain?
-            </h3>
-            <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)' }}>
-              A Markov Chain is a mathematical system that models transitions from one state to another according to certain probabilistic rules. 
-              The defining characteristic of a Markov chain is the <strong>Markov Property</strong>: 
-              <em> "The future depends only on the present, not on the past."</em> 
-              It does not matter how you arrived at your current state; the odds of where you go next are exactly the same.
-            </p>
-          </section>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            
-            <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Grid size={18} color="var(--accent)"/> States & Transitions
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                <strong>States (Nodes):</strong> The distinct situations the system can be in (e.g., "Sunny" or "Rainy").<br/><br/>
-                <strong>Transitions (Edges):</strong> The arrows connecting states. The number on the arrow represents the <em>probability</em> of moving from the source to the target in the next time step. All outgoing probabilities from a single state must always sum to <strong>1.0 (100%)</strong>.
-              </p>
-            </div>
-
-            <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <TrendingUp size={18} color="var(--accent)"/> Transition Matrix
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                A square grid (matrix) where the rows represent the <em>Current State</em> and the columns represent the <em>Next State</em>. The value at row <em>i</em> and column <em>j</em> is precisely the probability of jumping from state <em>i</em> to state <em>j</em>.
-              </p>
-            </div>
-
-            <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <IterationCcw size={18} color="var(--accent)"/> Stationary Distribution
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                If you let the Markov chain run for an infinite amount of time, the <strong>Stationary Distribution</strong> tells you the overall percentage of time the system spends in each state. It represents the "long-term equilibrium" or steady state of the system probabilities.
-              </p>
-            </div>
-
-            <div style={{ background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <h4 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <X size={18} color="#f43f5e"/> Absorbing States
-              </h4>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                An absorbing state is a "trap". Once the system enters this state, it can never leave. Mathematically, this is represented by a self-loop transition back to itself with a probability of exactly <strong>1.0</strong> (and 0 for everything else). Example: "Broke" in a casino scenario.
-              </p>
-            </div>
-
-          </div>
-
-          <section style={{ background: 'var(--accent)', padding: '1.5rem', borderRadius: '8px', color: '#fff' }}>
-            <h3 style={{ marginTop: 0 }}>Joint Probability of a Sequence</h3>
-            <p style={{ margin: 0, lineHeight: '1.6', fontSize: '0.95rem' }}>
-              To find the probability of a specific chain of events occurring in exact order (e.g., A → B → C), you simply multiply the transition probabilities of each individual step together: <br/>
-              <code>P(A → B → C) = P(A → B) × P(B → C)</code>
-            </p>
-          </section>
-
+        <div className="card">
+          <h4><TrendingUp size={18} aria-hidden /> Transition matrix</h4>
+          <p>
+            A square grid where the rows are the <em>current state</em> (From) and the columns are the <em>next state</em> (To).
+            The value at row <em>i</em> and column <em>j</em> is the probability of jumping from state <em>i</em> to state <em>j</em>: <code>P[i][j] = Pr(Xₜ₊₁ = j | Xₜ = i)</code>.
+          </p>
+        </div>
+        <div className="card">
+          <h4><IterationCcw size={18} aria-hidden /> Stationary distribution</h4>
+          <p>
+            A distribution π with <code>πP = π</code>: if the chain starts there, it stays there. For an irreducible chain, π is unique and gives the long-run fraction of time spent in each state.
+            The distribution μₜ also <em>converges</em> to π only when the chain is aperiodic; a periodic chain (like A ⇄ B) can oscillate forever. Reducible chains can have several stationary distributions.
+          </p>
+        </div>
+        <div className="card">
+          <h4><Lock size={18} aria-hidden /> Absorbing states</h4>
+          <p>
+            An absorbing state is a “trap”. Once the system enters it, it can never leave. Mathematically, it has a self-loop with probability exactly <strong>1</strong> (and 0 for everything else).
+            Example: “Broke &amp; Busted” in the Casino Heist scenario. A closed group of several states is recurrent but not absorbing.
+          </p>
         </div>
       </div>
-    </div>
+
+      <section className="prose">
+        <h3>Joint probability of a sequence</h3>
+        <p>
+          To find the probability of a specific chain of events in exact order (e.g. A → B → C), multiply the transition probabilities of each step.
+          Given that the chain starts in A:
+        </p>
+        <div className="formula" aria-label="P of A then B then C given start A equals P of A to B times P of B to C">P(A → B → C | X₀ = A) = P(A→B) × P(B→C)</div>
+        <p style={{ marginTop: 10 }}>The <strong>joint</strong> probability also includes the chance of starting in A:</p>
+        <div className="formula" aria-label="joint probability equals mu zero of A times P of A to B times P of B to C">Pr(X₀=A, X₁=B, X₂=C) = μ₀(A) × P(A→B) × P(B→C)</div>
+        <h3 style={{ marginTop: 18 }}>Distribution after t steps</h3>
+        <div className="formula">μₜ₊₁ = μₜ P &nbsp;&nbsp;⇒&nbsp;&nbsp; μₜ = μ₀ Pᵗ</div>
+        <p className="hint" style={{ marginTop: 8 }}>(Pᵗ)[i][j] is the probability of being in j after exactly t steps from i, not the probability of first arriving there at step t.</p>
+      </section>
+    </Dialog>
   );
 }

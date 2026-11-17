@@ -1,6 +1,11 @@
-import { MarkovNode, MarkovEdge } from '../hooks/useMarkovModel';
+import { createEmptyDocument } from '../domain/markov/document';
+import type { ChainDocumentV1 } from '../domain/markov/types';
 
-export const EXAMPLES: Record<string, { name: string, nodes: MarkovNode[], edges: MarkovEdge[] }> = {
+// Original example data, preserved verbatim from the pre-upgrade app (PLAN.md B11).
+interface LegacyNode { id: string; name: string; x: number; y: number }
+interface LegacyEdge { id: string; source: string; target: string; probability: number }
+
+export const EXAMPLES: Record<string, { name: string, nodes: LegacyNode[], edges: LegacyEdge[] }> = {
   weather: {
     name: 'Weather (Sunny/Rainy)',
     nodes: [
@@ -124,3 +129,82 @@ export const EXAMPLES: Record<string, { name: string, nodes: MarkovNode[], edges
     ]
   }
 };
+
+export interface ExampleMeta {
+  subtitle?: string;
+  description: string;
+  stepLabel?: string;
+  difficulty: 'Intro' | 'Intermediate' | 'Advanced';
+  /** Starting state for μ₀. Defaults to the first state (the pre-upgrade chart behavior). */
+  start?: string;
+  assumptions: string[];
+}
+
+export const EXAMPLE_META: Record<string, ExampleMeta> = {
+  weather: {
+    description: 'Two weather states. Each row says what tomorrow looks like given today.',
+    stepLabel: 'day',
+    difficulty: 'Intro',
+    assumptions: ['Tomorrow depends only on today, not on earlier days.', 'Illustrative probabilities, not a forecast.'],
+  },
+  stockMarket: {
+    description: 'Three market regimes with persistent bull and bear phases.',
+    stepLabel: 'week',
+    difficulty: 'Intro',
+    assumptions: ['Illustrative regime probabilities, not financial data or advice.'],
+  },
+  pagerank: {
+    description: 'A random surfer follows links between four pages; the stationary vector ranks them.',
+    difficulty: 'Intermediate',
+    assumptions: ['No damping/teleport term, unlike production PageRank.'],
+  },
+  epidemic: {
+    subtitle: 'Simplified individual-status Markov model',
+    description: 'One person moves from Susceptible to Infected to Recovered with fixed per-step probabilities.',
+    stepLabel: 'day',
+    difficulty: 'Intro',
+    assumptions: [
+      'Models a single individual, not population counts.',
+      'Infection probability is fixed; a real SIR epidemic depends on how many people are currently infected.',
+      'Recovered is absorbing (permanent immunity).',
+    ],
+  },
+  gambler: {
+    description: 'A risk/reward story with two absorbing outcomes: Broke & Busted (ruin) and Walk Away Rich.',
+    stepLabel: 'round',
+    difficulty: 'Intermediate',
+    // The first listed state is the absorbing "Broke & Busted"; starting there makes every chart flat.
+    start: '2',
+    assumptions: ['Educational probabilities, not real gambling odds or advice.'],
+  },
+  socialMedia: {
+    description: 'Seven engagement states; closing the app is the only absorbing exit.',
+    stepLabel: 'minute',
+    difficulty: 'Advanced',
+    assumptions: ['Illustrative assumptions, not empirical psychology.'],
+  },
+};
+
+/** Convert an original example into a canonical document (data unchanged; μ₀ is a point mass at the start state). */
+export function exampleToDocument(key: string): ChainDocumentV1 {
+  const ex = EXAMPLES[key];
+  const meta = EXAMPLE_META[key];
+  const doc = createEmptyDocument(ex.name);
+  const ids = ex.nodes.map((n) => n.id);
+  const start = meta?.start ?? ids[0];
+  return {
+    ...doc,
+    stateOrder: ids,
+    states: ex.nodes.map((n) => ({ id: n.id, label: n.name })),
+    transitions: ex.edges.map((e) => ({ from: e.source, to: e.target, probability: e.probability })),
+    initial: ids.map((id) => ({ stateId: id, probability: id === start ? 1 : 0 })),
+    layout: { positions: Object.fromEntries(ex.nodes.map((n) => [n.id, { x: n.x, y: n.y }])) },
+    metadata: {
+      ...doc.metadata,
+      description: [meta?.subtitle, meta?.description].filter(Boolean).join(' — ') || undefined,
+      stepLabel: meta?.stepLabel,
+      exampleId: key,
+      exampleVersion: 1,
+    },
+  };
+}
