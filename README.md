@@ -16,20 +16,28 @@ Everything runs in the browser. There is no backend, no account, and no data lea
 
 ## Features
 
+The pages below are listed in the order they appear in the left navigation.
+
 | Page | What you can do |
 | --- | --- |
 | **Home** | Start page with an overview of every feature, your progress, and one-click links to continue learning or modeling. It also shows what is stored on this device, with **Clear all data**. |
+| **Theory** | A quick-reference page covering the core definitions and formulas, each linked to the lesson that explains it. |
+| **Lessons** | 12 lessons across five levels: foundations, evolution, long-run behavior, absorption, and experiments. Each has a worked model, an interactive demo, a common mistake, and a knowledge check. |
+| **Examples** | The original story models (Weather, Stock Market, Mini PageRank, SIR, Casino Heist, Doomscroll Trap) with their assumptions and limits stated. There are also six small teaching examples. Opening one loads it into the Modeler. |
+| **Challenges** | 12 exercises, from repairing a row to interpreting simulation uncertainty. They are graded from exact calculations, explain common wrong answers, show a rubric checklist, and offer progressive hints. |
 | **Modeler** | Add states, drag between them to create transitions, and edit probabilities on the canvas or in the transition matrix. The **Validate** tab explains every problem and offers undoable repairs. The **Sequence** tab computes path probabilities, and **Explain** summarizes the chain's structure. Undo and redo with Ctrl/⌘+Z. |
-| **Simulation** (lower panel) | Shows the exact distribution μₜ over time, or animates one seeded sample path. The same seed always gives the same path. *Explain this step* shows the random draw. Traces export to CSV. |
+| **Simulation** (Modeler's bottom panel) | Shows the exact distribution μₜ over time, or animates one seeded sample path. The same seed always gives the same path. *Explain this step* shows the random draw. Traces export to CSV. |
 | **Analysis** | Communicating classes, periods, stationary distribution(s), absorption probabilities, and expected visits. For a target set: hitting probabilities, unconditional and conditional expected hitting times, Pr(T ≤ t), and mean return times. |
 | **Experiments** | Thousands of independent seeded trajectories, run in a background worker you can cancel. Estimates come with 95% Wilson or Student-t intervals and explicit censoring, next to the exact values. Results export as CSV or a full run bundle. |
 | **Compare** | Freeze the current model as a baseline, edit a copy, and compare exact results under one shared definition. Changes are shown in percentage points, and relative change only where it is defined. Includes row-preserving parameter sweeps and an optional simulation check. Nothing is called "better" unless you state a goal. |
-| **Theory** | A quick-reference page covering the core definitions and formulas, each linked to the lesson that explains it. |
-| **Lessons** | 12 lessons across five levels: foundations, evolution, long-run behavior, absorption, and experiments. Each has a worked model, an interactive demo, a common mistake, and a knowledge check. |
-| **Challenges** | 12 exercises, from repairing a row to interpreting simulation uncertainty. They are graded from exact calculations, explain common wrong answers, show a rubric checklist, and offer progressive hints. |
-| **Examples** | The original story models (Weather, Stock Market, Mini PageRank, SIR, Casino Heist, Doomscroll Trap) with their assumptions and limits stated. There are also six small teaching examples. |
 
-Light, dark, and system themes are supported. The layout works from phone width up, and every control is reachable by keyboard.
+### Layout
+
+- The app starts with an empty model. Open an example or add your first state to begin.
+- Both side panes can be hidden: the navigation with **Collapse**, and the right-hand inspector with its **»** button.
+- In the Modeler, drag the inspector's left edge to change its width and the bottom panel's top edge to change its height. Double-click an edge to reset it. The edges can also be adjusted with the arrow keys.
+- Light, dark, and system themes are supported.
+- The layout works from phone width up, and every control is reachable by keyboard.
 
 ### Where your data lives
 
@@ -38,6 +46,7 @@ Light, dark, and system themes are supported. The layout works from phone width 
 | Current model | Autosaved in this browser's local storage. Use **Export / Import** for `.markov.json` files. |
 | Comparison baseline | Saved separately in local storage. |
 | Learning progress | Saved in local storage. It can be exported or reset from the Lessons page. |
+| Preferences | Theme and panel layout (hidden panes, widths, heights), saved in local storage. |
 
 To remove everything at once, use **Home → Your data → Clear all data**. You can download your model and export your progress first. Clearing site data in the browser also removes all of these.
 
@@ -133,8 +142,10 @@ src/
     statistics/    Wilson, Student t, Newcombe, Welch intervals
     comparison/    Baseline/alternative alignment, metrics, sweeps
     assessment/    Challenge grading and answer diagnosis
-  features/        Pages: simulation, analysis, experiments, comparison, learning, challenges
-  components/      Shared UI (graph editor, matrix editor, dialogs, …)
+  features/        Pages: home, theory, examples, learning, challenges, simulation,
+                   analysis, experiments, comparison
+  components/      Shared UI (graph editor, matrix editor, inspector panels, dialogs, …)
+  app/             Project state (undo/redo, autosave), theme, clear-all-data
   data/            Versioned lessons and challenges
   lib/examples.ts  Example models (original data preserved verbatim)
   workers/         Experiment web worker

@@ -587,6 +587,8 @@ Order follows the BPMN plan's foundation → education → animation → experim
 
 **Exit gate:** CI passes, preservation matrix and style acceptance sheet have evidence, deployed preview passes smoke tests, and publishing follows the repository owner's existing release authorization/process.
 
+> Status (2026-11-17): descoped by the project owner. Only deployment readiness was done: `netlify.toml`, `railway.json`, and a dependency-free production server (`server.mjs`), verified with a clean install/build, HTTP probes (MIME types, caching, gzip, 404s, path traversal), and a browser run of the experiment worker through the server. CI, end-to-end tests, and release/rollback procedures are not in place. See README → Deployment.
+
 ## 9. Verification and test fixtures
 
 ### 9.1 Hand-checkable numerical fixtures
