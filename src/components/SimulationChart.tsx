@@ -31,7 +31,7 @@ export default function DistributionView({ doc, chain, stale, theme }: Props) {
   const unit = doc.metadata.stepLabel ? `${doc.metadata.stepLabel}s` : 'steps';
 
   if (!series || !data) {
-    return <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>Choose a starting state or enter a distribution that totals 1, and make every row total 1.</p></div>;
+    return <div className="empty-state" style={{ gridColumn: '1 / -1' }}><p>{doc.stateOrder.length === 0 ? 'Add a state or open an example to see how the distribution evolves.' : 'Choose a starting state or enter a distribution that totals 1, and make every row total 1.'}</p></div>;
   }
   return (
             <>

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { applyCommand, compileChain, createEmptyDocument, importDocument, exportDocument, type Command } from '../domain/markov';
 import type { ChainDocumentV1, CompiledChain } from '../domain/markov/types';
-import { exampleToDocument } from '../lib/examples';
 import { isClearingData } from './clearData';
 
 const AUTOSAVE_KEY = 'markov-simulator:autosave:v1';
@@ -54,7 +53,8 @@ function initialDocument(): ChainDocumentV1 {
       if (r.ok) return r.document;
     }
   } catch { /* storage unavailable: fall through */ }
-  return exampleToDocument('weather');
+  // First launch (or after clearing data): start clean. Examples are one click away.
+  return createEmptyDocument();
 }
 
 export type SaveStatus = 'saved' | 'saving' | 'failed';

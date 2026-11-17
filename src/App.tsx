@@ -150,7 +150,8 @@ export default function App() {
   }, [doc.stateOrder, selection]);
 
   const issues = useMemo(() => validateDocument(doc), [doc]);
-  const errorCount = issues.filter((i) => i.severity === 'error').length;
+  // An empty model is a starting point, not a mistake: it is not counted as an error in badges.
+  const errorCount = issues.filter((i) => i.severity === 'error' && i.code !== 'model.empty').length;
   const analysisChain = chain ?? lastValidChain?.chain ?? null;
   const stale = !chain && !!lastValidChain && doc.stateOrder.length > 0;
   const structure = useMemo(() => {
@@ -394,7 +395,9 @@ export default function App() {
               <div className="status-strip" aria-label="Model status">
                 <span>{doc.stateOrder.length} states</span>
                 <span>{doc.transitions.filter((t) => t.probability > 0).length} transitions</span>
-                {errorCount === 0
+                {doc.stateOrder.length === 0
+                  ? <span>Empty model</span>
+                  : errorCount === 0
                   ? <span className="ok"><CheckCircle2 size={12} aria-hidden /> Valid</span>
                   : <button className="btn btn-ghost btn-sm bad" onClick={() => openTab('validate')}><AlertCircle size={12} aria-hidden /> {errorCount} issue{errorCount > 1 ? 's' : ''}</button>}
                 {doc.metadata.stepLabel && <span>1 step = 1 {doc.metadata.stepLabel}</span>}
